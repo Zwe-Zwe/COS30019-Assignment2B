@@ -29,9 +29,15 @@ def create_dataloaders(
     num_workers: int,
 ) -> Tuple[DataLoader, DataLoader, list[str]]:
     weights = models.ResNet18_Weights.DEFAULT
-    normalize = transforms.Normalize(mean=weights.meta["mean"],
-                                     std=weights.meta["std"])
-    size = weights.meta["min_size"]
+    try:
+        normalize = transforms.Normalize(mean=weights.meta["mean"],
+                                         std=weights.meta["std"])
+        size = weights.meta["min_size"]
+    except KeyError:
+        # Older torchvision builds may not expose meta info; fallback defaults.
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        size = 224
 
     train_tfms = transforms.Compose([
         transforms.Resize((size, size)),
