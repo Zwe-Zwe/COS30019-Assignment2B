@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
 from sklearn.metrics import classification_report, confusion_matrix
 
+from training_logger import RunLogger
 
 def build_model(num_classes: int, freeze_backbone: bool = True) -> nn.Module:
     model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
@@ -27,6 +28,7 @@ def create_dataloaders(
     data_root: Path,
     batch_size: int,
     num_workers: int,
+    strong_aug: bool,
 ) -> Tuple[DataLoader, DataLoader, list[str]]:
     weights = models.ResNet18_Weights.DEFAULT
     try:
@@ -39,14 +41,20 @@ def create_dataloaders(
                                          std=[0.229, 0.224, 0.225])
         size = 224
 
-    train_tfms = transforms.Compose([
+    train_tfms_list = [
         transforms.Resize((size, size)),
         transforms.RandomResizedCrop(size, scale=(0.8, 1.0)),
         transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-        transforms.ToTensor(),
-        normalize,
-    ])
+    ]
+    if strong_aug:
+        train_tfms_list.append(transforms.RandomRotation(15))
+        train_tfms_list.append(transforms.RandomPerspective(distortion_scale=0.25, p=0.4))
+    train_tfms_list.append(transforms.ToTensor())
+    if strong_aug:
+        train_tfms_list.append(transforms.RandomErasing(p=0.25))
+    train_tfms_list.append(normalize)
+    train_tfms = transforms.Compose(train_tfms_list)
     val_tfms = transforms.Compose([
         transforms.Resize((size, size)),
         transforms.CenterCrop(size),
@@ -120,37 +128,62 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
     parser.add_argument("--unfreeze", action="store_true",
                         help="Fine-tune entire network if set")
+    parser.add_argument("--strong_aug", action="store_true",
+                        help="Enable stronger data augmentation")
+    parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
+                        default="none")
+    parser.add_argument("--step_size", type=int, default=4)
+    parser.add_argument("--step_gamma", type=float, default=0.5)
+    parser.add_argument("--early_stop_patience", type=int, default=0)
+    parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
+                        help="Directory to store per-run logs and history")
     args = parser.parse_args()
 
+    logger = RunLogger("transfer_resnet18", args.log_dir)
+
     train_loader, val_loader, class_names = create_dataloaders(
-        args.data_root, args.batch_size, args.num_workers
+        args.data_root, args.batch_size, args.num_workers, args.strong_aug
     )
     model = build_model(len(class_names), freeze_backbone=not args.unfreeze)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     params = model.parameters() if args.unfreeze else model.fc.parameters()
-    optimizer = optim.Adam(params, lr=args.lr)
+    optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.CrossEntropyLoss()
+    scheduler = None
+    if args.scheduler == "cosine":
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    elif args.scheduler == "step":
+        scheduler = optim.lr_scheduler.StepLR(
+            optimizer, step_size=args.step_size, gamma=args.step_gamma
+        )
 
     best_acc = 0.0
+    best_epoch = 0
+    epochs_no_improve = 0
     args.output_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = args.output_dir / "transfer_resnet18.pth"
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
-        print(f"Epoch {epoch:02d}/{args.epochs} "
-              f"- train_loss: {train_loss:.4f} "
-              f"- val_loss: {val_loss:.4f} "
-              f"- val_acc: {val_acc*100:.2f}%")
+        logger.log(
+            f"Epoch {epoch:02d}/{args.epochs} "
+            f"- train_loss: {train_loss:.4f} "
+            f"- val_loss: {val_loss:.4f} "
+            f"- val_acc: {val_acc*100:.2f}%"
+        )
 
         if val_acc > best_acc:
             best_acc = val_acc
+            best_epoch = epoch
+            epochs_no_improve = 0
             torch.save({
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
@@ -158,16 +191,38 @@ def main() -> None:
                 "class_names": class_names,
                 "unfreeze": args.unfreeze,
             }, ckpt_path)
-            print(f"[INFO] Saved new best model to {ckpt_path} (acc={best_acc*100:.2f}%)")
+            logger.log(f"[INFO] Saved new best model to {ckpt_path} (acc={best_acc*100:.2f}%)")
+        else:
+            epochs_no_improve += 1
+
+        if scheduler is not None:
+            scheduler.step()
+
+        if args.early_stop_patience > 0 and epochs_no_improve >= args.early_stop_patience:
+            logger.log(f"[INFO] Early stopping triggered at epoch {epoch}")
+            break
 
     checkpoint = torch.load(ckpt_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     val_loss, val_acc, preds, targets = evaluate(model, val_loader, criterion, device)
-    print(f"[FINAL] Best checkpoint - val_loss: {val_loss:.4f}, val_acc: {val_acc*100:.2f}%")
-    print("Confusion matrix:")
-    print(confusion_matrix(targets, preds))
-    print("Classification report:")
-    print(classification_report(targets, preds, target_names=class_names))
+    logger.log(f"[FINAL] Best checkpoint - val_loss: {val_loss:.4f}, val_acc: {val_acc*100:.2f}%")
+    logger.log("Confusion matrix:")
+    logger.log(confusion_matrix(targets, preds))
+    logger.log("Classification report:")
+    logger.log(classification_report(targets, preds, target_names=class_names))
+    logger.record_summary({
+        "best_epoch": best_epoch,
+        "best_acc": f"{best_acc*100:.2f}",
+        "best_loss": f"{val_loss:.4f}",
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "lr": args.lr,
+        "notes": (
+            f"unfreeze={args.unfreeze}; scheduler={args.scheduler}; "
+            f"strong_aug={args.strong_aug}; wd={args.weight_decay}; "
+            f"early_stop={args.early_stop_patience}"
+        ),
+    })
 
 
 if __name__ == "__main__":

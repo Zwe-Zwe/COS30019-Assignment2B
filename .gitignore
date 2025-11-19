@@ -1,0 +1,30 @@
+# Python / Pip
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.python-version
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Data / models / logs
+models/
+training_logs/
+*.pth
+*.pkl
+
+# Cached datasets or large assets
+data3a/
+map.osm
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+
+# Flask / runtime artifacts
+instance/
+*.log

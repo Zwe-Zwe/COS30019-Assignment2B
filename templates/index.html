@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Incident Classification System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #route-map {
+            height: 420px;
+            border: 1px solid #ccc;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <h1 class="mb-3">Kuching Incident Classification System</h1>
+    <p class="text-muted">Select landmarks, upload an incident image (or choose severity manually), and view updated routes.</p>
+
+    {% if errors %}
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            {% for err in errors %}
+            <li>{{ err }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="card mb-4 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Origin</label>
+                <select class="form-select" name="start">
+                    {% for node in nodes %}
+                    <option value="{{ node.id }}" {% if node.id == selected_start %}selected{% endif %}>
+                        {{ node.id }} - {{ node.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Destination</label>
+                <select class="form-select" name="goal">
+                    {% for node in nodes %}
+                    <option value="{{ node.id }}" {% if node.id == selected_goal %}selected{% endif %}>
+                        {{ node.id }} - {{ node.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Incident image (optional)</label>
+                <input type="file" name="incident_image" class="form-control" accept="image/*">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Affected road segment</label>
+                <select class="form-select" name="incident_way">
+                    <option value="">-- None --</option>
+                    {% for way in ways %}
+                    <option value="{{ way.id }}" {% if way.id == selected_way %}selected{% endif %}>
+                        {{ way.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Search algorithm</label>
+                <select class="form-select" name="algorithm">
+                    {% for key, info in algorithm_choices.items() %}
+                    <option value="{{ key }}" {% if key == selected_algorithm %}selected{% endif %}>
+                        {{ info[0] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Manual severity (fallback)</label>
+                <select class="form-select" name="manual_severity">
+                    <option value="">-- auto from image --</option>
+                    {% for sev in severity_options %}
+                    <option value="{{ sev }}" {% if sev == manual_severity %}selected{% endif %}>
+                        {{ sev }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Used when no image is provided.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Number of routes</label>
+                <input type="number" name="num_routes" class="form-control" min="1" max="5" value="{{ selected_k }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary w-100" type="submit">Compute Routes</button>
+            </div>
+        </div>
+    </form>
+
+    {% if prediction %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">Incident prediction</div>
+        <div class="card-body">
+            <p class="mb-1"><strong>Severity:</strong> {{ prediction.class_name }}</p>
+            <p class="mb-1"><strong>Multiplier:</strong> ×{{ prediction.multiplier }}</p>
+            <p class="mb-2 text-muted">Probabilities:</p>
+            <ul class="mb-0">
+                {% for cls, prob in prediction.probabilities.items() %}
+                <li>{{ cls }} → {{ "%.2f"|format(prob * 100) }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if route_geometries %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">Map view</div>
+        <div class="card-body">
+            <div id="route-map"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if routes %}
+    <h2>Top {{ routes|length }} route(s)</h2>
+    {% for route in routes %}
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header d-flex justify-content-between">
+            <span>{{ route.label }}</span>
+            <span class="fw-semibold">{{ "%.2f"|format(route.cost) }} minutes</span>
+        </div>
+        <div class="card-body">
+            <p class="mb-2"><strong>Node sequence:</strong> {{ route.nodes | join(" → ") }}</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Road</th>
+                            <th>Way ID</th>
+                            <th>Camera?</th>
+                            <th>Time (min)</th>
+                            <th>Multiplier</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for edge in route.edges %}
+                        <tr>
+                            <td>{{ edge.from_node }}</td>
+                            <td>{{ edge.to }}</td>
+                            <td>{{ edge.name }}</td>
+                            <td>{{ edge.way_id }}</td>
+                            <td>{% if edge.is_camera %}Yes{% else %}No{% endif %}</td>
+                            <td>{{ "%.2f"|format(edge.applied_time) }}</td>
+                            <td>{{ "%.2f"|format(edge.multiplier) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% elif routes is not none %}
+    <div class="alert alert-warning">No routes found for the chosen inputs.</div>
+    {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const routeGeoms = {{ route_geometries|tojson }};
+    const mapCenter = {{ map_center|tojson }};
+    const startMarker = {{ start_coords|tojson }};
+    const goalMarker = {{ goal_coords|tojson }};
+
+    if (routeGeoms.length > 0 && document.getElementById('route-map')) {
+        const map = L.map('route-map').setView([mapCenter.lat, mapCenter.lon], 15);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const bounds = [];
+
+        routeGeoms.forEach((route, idx) => {
+            const latlngs = route.coords.map(c => {
+                bounds.push([c.lat, c.lon]);
+                return [c.lat, c.lon];
+            });
+            L.polyline(latlngs, {
+                color: route.color,
+                weight: 5,
+                opacity: 0.8
+            }).addTo(map).bindPopup(`${route.label}<br>Total time: ${route.cost.toFixed(2)} min`);
+        });
+
+        const startPopup = `${startMarker.id}: ${startMarker.label}`;
+        const goalPopup = `${goalMarker.id}: ${goalMarker.label}`;
+        L.circleMarker([startMarker.lat, startMarker.lon], {color: '#16a34a', radius: 6})
+            .addTo(map).bindPopup(`Start<br>${startPopup}`);
+        L.circleMarker([goalMarker.lat, goalMarker.lon], {color: '#dc2626', radius: 6})
+            .addTo(map).bindPopup(`Goal<br>${goalPopup}`);
+
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, {padding: [20, 20]});
+        }
+    }
+</script>
+</body>
+</html>
