@@ -12,6 +12,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 from training_logger import RunLogger
+from training_config import CONFIG
 
 
 def create_dataloaders(
@@ -23,11 +24,10 @@ def create_dataloaders(
     try:
         normalize = transforms.Normalize(mean=weights.meta["mean"],
                                          std=weights.meta["std"])
-        size = weights.meta["min_size"]
     except KeyError:
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
-        size = 224
+    size = CONFIG.img_size
 
     base_tfms = [
         transforms.Resize((size, size)),
@@ -81,7 +81,7 @@ def main() -> None:
         description="Train Gradient Boosted Trees on ResNet features"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=CONFIG.feature_batch_size)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--max_depth", type=int, default=3)
     parser.add_argument("--learning_rate", type=float, default=0.05)

@@ -11,6 +11,7 @@ from sklearn.svm import SVC
 from torchvision import datasets, transforms
 
 from training_logger import RunLogger
+from training_config import CONFIG
 
 
 def compute_hog_features(split_dir: Path, image_size: int,
@@ -44,10 +45,10 @@ def main() -> None:
         description="Train HOG + SVM classifier for incident severity"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
-    parser.add_argument("--image_size", type=int, default=128)
-    parser.add_argument("--orientations", type=int, default=9)
-    parser.add_argument("--pixels_per_cell", type=int, default=8)
-    parser.add_argument("--cells_per_block", type=int, default=2)
+    parser.add_argument("--image_size", type=int, default=CONFIG.img_size)
+    parser.add_argument("--orientations", type=int, default=CONFIG.hog_orientations)
+    parser.add_argument("--pixels_per_cell", type=int, default=CONFIG.hog_pixels_per_cell)
+    parser.add_argument("--cells_per_block", type=int, default=CONFIG.hog_cells_per_block)
     parser.add_argument("--C", type=float, default=10.0)
     parser.add_argument("--gamma", type=str, default="scale")
     parser.add_argument("--output_dir", type=Path, default=Path("models"))

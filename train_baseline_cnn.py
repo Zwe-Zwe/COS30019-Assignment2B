@@ -11,9 +11,10 @@ from torchvision import datasets, transforms
 from sklearn.metrics import classification_report, confusion_matrix
 
 from training_logger import RunLogger
+from training_config import CONFIG
 
 class SimpleCNN(nn.Module):
-    """Lightweight baseline CNN with three conv blocks."""
+    """Lightweight baseline CNN with adaptive pooling for arbitrary image size."""
 
     def __init__(self, num_classes: int) -> None:
         super().__init__()
@@ -32,10 +33,11 @@ class SimpleCNN(nn.Module):
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
+            nn.AdaptiveAvgPool2d((4, 4)),
         )
         self.classifier = nn.Sequential(
             nn.Dropout(0.4),
-            nn.Linear(128 * 16 * 16, 256),
+            nn.Linear(128 * 4 * 4, 256),
             nn.ReLU(inplace=True),
             nn.Dropout(0.3),
             nn.Linear(256, num_classes),
@@ -154,26 +156,30 @@ def main() -> None:
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"),
                         help="Root directory containing training/ and validation/ subdirectories")
-    parser.add_argument("--epochs", type=int, default=15)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
+    parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
+    parser.add_argument("--lr", type=float, default=CONFIG.learning_rate)
+    parser.add_argument("--weight_decay", type=float, default=CONFIG.weight_decay)
     parser.add_argument("--num_workers", type=int, default=2)
-    parser.add_argument("--img_size", type=int, default=128)
+    parser.add_argument("--img_size", type=int, default=CONFIG.img_size)
     parser.add_argument("--strong_aug", action="store_true",
                         help="Enable stronger spatial augmentations")
+    parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
+                        help="Disable stronger spatial augmentations")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
-                        default="none")
-    parser.add_argument("--step_size", type=int, default=5,
+                        default=CONFIG.scheduler)
+    parser.add_argument("--step_size", type=int, default=CONFIG.step_size,
                         help="Epoch interval for step scheduler")
-    parser.add_argument("--step_gamma", type=float, default=0.5,
+    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma,
                         help="Decay factor for step scheduler")
-    parser.add_argument("--early_stop_patience", type=int, default=0,
+    parser.add_argument("--early_stop_patience", type=int,
+                        default=CONFIG.early_stop_patience,
                         help="Stop if no val improvement for N epochs (0=off)")
     parser.add_argument("--output_dir", type=Path, default=Path("models"),
                         help="Where to save the best model checkpoint")
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
+    parser.set_defaults(strong_aug=CONFIG.strong_augmentation)
     args = parser.parse_args()
 
     logger = RunLogger("baseline_cnn", args.log_dir)

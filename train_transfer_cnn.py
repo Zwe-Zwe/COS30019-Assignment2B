@@ -10,6 +10,7 @@ from torchvision import datasets, transforms, models
 from sklearn.metrics import classification_report, confusion_matrix
 
 from training_logger import RunLogger
+from training_config import CONFIG
 
 def build_model(num_classes: int, freeze_backbone: bool = True) -> nn.Module:
     model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
@@ -125,23 +126,27 @@ def main() -> None:
         description="Transfer learning using pretrained ResNet18"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
-    parser.add_argument("--epochs", type=int, default=12)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
+    parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
+    parser.add_argument("--lr", type=float, default=CONFIG.learning_rate)
+    parser.add_argument("--weight_decay", type=float, default=CONFIG.weight_decay)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
     parser.add_argument("--unfreeze", action="store_true",
                         help="Fine-tune entire network if set")
     parser.add_argument("--strong_aug", action="store_true",
                         help="Enable stronger data augmentation")
+    parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
+                        help="Disable stronger augmentation")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
-                        default="none")
-    parser.add_argument("--step_size", type=int, default=4)
-    parser.add_argument("--step_gamma", type=float, default=0.5)
-    parser.add_argument("--early_stop_patience", type=int, default=0)
+                        default=CONFIG.scheduler)
+    parser.add_argument("--step_size", type=int, default=CONFIG.step_size)
+    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma)
+    parser.add_argument("--early_stop_patience", type=int,
+                        default=CONFIG.early_stop_patience)
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
+    parser.set_defaults(strong_aug=CONFIG.strong_augmentation)
     args = parser.parse_args()
 
     logger = RunLogger("transfer_resnet18", args.log_dir)
