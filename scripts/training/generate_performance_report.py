@@ -1,32 +1,47 @@
+"""
+Generate research-style charts and a concise markdown performance summary.
+
+Outputs (default):
+- charts/best_per_model.png
+- charts/accuracy_trend.png
+- charts/training_curve.png
+- training_logs/performance_report.md
+
+Usage:
+    python3 scripts/training/generate_performance_report.py \
+        --history training_logs/run_history.csv \
+        --logs_dir training_logs \
+        --out_md training_logs/performance_report.md \
+        --charts_dir charts
+"""
+from __future__ import annotations
+
 import argparse
 import csv
-import re
-import statistics
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 
-ROOT = Path(__file__).resolve().parents[2]
+
 PALETTE = {
-    "blue": "#0ea5e9",
-    "blue_dark": "#0284c7",
-    "amber": "#f59e0b",
-    "amber_dark": "#c2410c",
+    "bg": "#f8fafc",
+    "text": "#0f172a",
+    "muted": "#94a3b8",
+    "blue": "#2563eb",
     "green": "#22c55e",
-    "slate": "#0f172a",
-    "slate_light": "#e2e8f0",
+    "amber": "#f59e0b",
+    "red": "#ef4444",
 }
 
 
-def apply_house_style() -> None:
+def set_style() -> None:
     plt.rcParams.update({
         "figure.facecolor": "white",
-        "axes.facecolor": "#f8fafc",
+        "axes.facecolor": PALETTE["bg"],
+        "axes.edgecolor": PALETTE["muted"],
         "axes.grid": True,
         "grid.alpha": 0.25,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
         "axes.titlesize": 14,
         "axes.labelsize": 12,
         "xtick.labelsize": 10,
@@ -35,373 +50,243 @@ def apply_house_style() -> None:
     })
 
 
-apply_house_style()
-
-
-def load_runs(csv_path: Path) -> List[Dict[str, str]]:
+def load_history(csv_path: Path) -> List[Dict[str, str]]:
     if not csv_path.exists():
-        raise FileNotFoundError(f"No run history found at {csv_path}")
+        raise FileNotFoundError(f"No run history at {csv_path}")
     with csv_path.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        return [row for row in reader]
+        return list(csv.DictReader(f))
 
 
-def model_best_acc(runs: List[dict]) -> List[Tuple[str, float]]:
+def best_per_model(runs: List[Dict[str, str]]) -> List[Tuple[str, float]]:
     best: Dict[str, float] = {}
     for r in runs:
-        model = r.get("model", "").strip()
+        model = r.get("model", "")
         try:
             acc = float(r.get("best_acc", "") or 0)
         except ValueError:
             continue
         if not model:
             continue
-        current = best.get(model, 0.0)
-        if acc > current:
-            best[model] = acc
+        best[model] = max(best.get(model, 0.0), acc)
     return sorted(best.items(), key=lambda x: x[1], reverse=True)
 
 
-def top_runs(runs: List[dict], n: int = 5) -> List[dict]:
+def select_best_run(runs: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
     scored = []
     for r in runs:
         try:
-            acc = float(r.get("best_acc", "") or 0)
+            scored.append((float(r.get("best_acc", "") or 0), r))
         except ValueError:
             continue
-        scored.append((acc, r))
+    if not scored:
+        return None
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [r for _, r in scored[:n]]
+    return scored[0][1]
 
 
-def plot_best_per_model(best_scores: List[Tuple[str, float]], output_path: Path) -> None:
-    if not best_scores:
-        return
-    models = [m for m, _ in best_scores]
-    accs = [a for _, a in best_scores]
-    plt.figure(figsize=(8, 4.5))
-    bars = plt.barh(models, accs, color=PALETTE["blue"])
-    plt.xlabel("Best validation accuracy (%)")
-    plt.title("Best accuracy per model")
-    plt.xlim(0, max(accs) * 1.05)
-    plt.gca().invert_yaxis()
-    for bar, acc in zip(bars, accs):
-        plt.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
-                 f"{acc:.2f}%", va="center", ha="left", fontsize=9, color=PALETTE["blue_dark"])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=200)
-    plt.close()
-
-
-def plot_runs_over_time(runs: List[dict], output_path: Path) -> None:
-    if not runs:
-        return
-    sorted_runs = sorted(runs, key=lambda r: r.get("timestamp", ""))
-    xs = []
-    ys = []
-    labels = []
-    cumulative_best = []
-    best_so_far = 0.0
-    best_point = (None, None, None)  # x, y, label
-    for idx, r in enumerate(sorted_runs):
+def best_runs_per_model(runs: List[Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+    """Return the best run per model keyed by model name."""
+    best: Dict[str, Tuple[float, Dict[str, str]]] = {}
+    for r in runs:
+        model = r.get("model", "")
+        if not model:
+            continue
         try:
             acc = float(r.get("best_acc", "") or 0)
         except ValueError:
             continue
-        xs.append(idx)
-        ys.append(acc)
-        labels.append(r.get("model", "unknown"))
-        best_so_far = max(best_so_far, acc)
-        cumulative_best.append(best_so_far)
-        if best_point[1] is None or acc > best_point[1]:
-            best_point = (idx, acc, r.get("model", "unknown"))
-    if not xs:
-        return
-    unique_labels = list(dict.fromkeys(labels))
-    palette = plt.get_cmap("tab10")
-    color_map = {lbl: palette(i % 10) for i, lbl in enumerate(unique_labels)}
-    colors = [color_map[lbl] for lbl in labels]
-    plt.figure(figsize=(9, 4.5))
-    plt.scatter(xs, ys, c=colors, alpha=0.85, edgecolor="#0f172a", linewidth=0.4)
-    plt.plot(xs, cumulative_best, color=PALETTE["green"], linewidth=2, label="Cumulative best")
-    if best_point[0] is not None:
-        plt.scatter([best_point[0]], [best_point[1]], color=PALETTE["amber"], marker="*", s=160,
-                    edgecolor=PALETTE["slate"], linewidth=1.2, zorder=5,
-                    label=f"Best: {best_point[2]} ({best_point[1]:.2f}%)")
-        plt.annotate(f"{best_point[1]:.2f}%",
-                     (best_point[0], best_point[1]),
-                     textcoords="offset points", xytext=(6, 6),
-                     fontsize=9, color=PALETTE["slate"])
-    plt.xlabel("Run order (by timestamp)")
-    plt.ylabel("Validation accuracy (%)")
-    plt.title("Runs over time")
-    handles = [plt.Line2D([0], [0], marker="o", color="w", label=lbl,
-                          markerfacecolor=color_map[lbl], markersize=8, markeredgecolor=PALETTE["slate"])
-               for lbl in unique_labels]
-    handles.append(plt.Line2D([0], [0], color=PALETTE["green"], label="Cumulative best"))
-    if best_point[0] is not None:
-        handles.append(plt.Line2D([0], [0], marker="*", color=PALETTE["amber"],
-                                  markeredgecolor=PALETTE["slate"], markerfacecolor=PALETTE["amber"],
-                                  markersize=10, linewidth=0, label="Best run"))
-    plt.legend(handles=handles, title="Model", bbox_to_anchor=(1.02, 1), loc="upper left")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=200)
-    plt.close()
+        current = best.get(model)
+        if current is None or acc > current[0]:
+            best[model] = (acc, r)
+    return {m: info[1] for m, info in best.items()}
 
-
-def plot_accuracy_hist(runs: List[dict], output_path: Path) -> None:
-    accs = []
+def model_stats(runs: List[Dict[str, str]]) -> List[Tuple[str, float, float, float, float]]:
+    """Return (model, mean, std, min, max) for accuracy."""
+    per_model: Dict[str, List[float]] = {}
     for r in runs:
+        m = r.get("model", "")
         try:
-            accs.append(float(r.get("best_acc", "") or 0))
+            acc = float(r.get("best_acc", "") or 0)
         except ValueError:
             continue
-    if not accs:
+        if not m:
+            continue
+        per_model.setdefault(m, []).append(acc)
+    stats = []
+    for m, vals in per_model.items():
+        mean_v = sum(vals) / len(vals)
+        std_v = (sum((v - mean_v) ** 2 for v in vals) / max(1, len(vals) - 1)) ** 0.5
+        stats.append((m, mean_v, std_v, min(vals), max(vals)))
+    stats.sort(key=lambda x: x[1], reverse=True)
+    return stats
+
+
+def plot_bar_with_error(stats: List[Tuple[str, float, float, float, float]], out: Path) -> None:
+    if not stats:
         return
-    mean_acc = statistics.mean(accs)
-    median_acc = statistics.median(accs)
-    plt.figure(figsize=(7.5, 4))
-    plt.hist(accs, bins=10, color=PALETTE["green"], edgecolor=PALETTE["slate"], alpha=0.85)
-    plt.xlabel("Validation accuracy (%)")
-    plt.ylabel("Count")
-    plt.title("Accuracy distribution across runs")
-    plt.axvline(mean_acc, color=PALETTE["blue"], linestyle="--", linewidth=1.5, label=f"Mean {mean_acc:.1f}%")
-    plt.axvline(median_acc, color=PALETTE["amber"], linestyle="-.", linewidth=1.5, label=f"Median {median_acc:.1f}%")
-    plt.legend()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    labels = [s[0] for s in stats]
+    means = [s[1] for s in stats]
+    stds = [s[2] for s in stats]
+    plt.figure(figsize=(8, 4.2))
+    bars = plt.bar(labels, means, yerr=stds, color=PALETTE["blue"], alpha=0.9, capsize=6, ecolor=PALETTE["muted"])
+    plt.ylabel("Validation accuracy (%)")
+    plt.title("Mean accuracy ± std per model")
+    plt.xticks(rotation=15)
+    for bar, mu in zip(bars, means):
+        plt.text(bar.get_x() + bar.get_width() / 2, mu + 0.3, f"{mu:.2f}%", ha="center", va="bottom", fontsize=9)
+    out.parent.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=200)
+    plt.savefig(out, dpi=220)
     plt.close()
 
 
-def plot_top_runs(top: List[dict], output_path: Path) -> None:
-    if not top:
+def plot_per_model_box(stats_data: Dict[str, List[float]], out: Path) -> None:
+    if not stats_data:
         return
-    labels = [f"{r.get('model','')} ({r.get('timestamp','')})" for r in top]
-    accs = [float(r.get("best_acc", "") or 0) for r in top]
+    labels, data = zip(*sorted(stats_data.items(), key=lambda x: sum(x[1]) / len(x[1]), reverse=True))
     plt.figure(figsize=(9, 4.5))
-    bars = plt.barh(labels, accs, color=PALETTE["amber"])
-    plt.xlabel("Validation accuracy (%)")
-    plt.title("Top runs")
-    plt.xlim(0, max(accs) * 1.05)
-    plt.gca().invert_yaxis()
-    for bar, acc in zip(bars, accs):
-        plt.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
-                 f"{acc:.2f}%", va="center", ha="left", fontsize=9, color=PALETTE["amber_dark"])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.boxplot(data, tick_labels=labels, patch_artist=True,
+                boxprops=dict(facecolor=PALETTE["bg"], color=PALETTE["text"]),
+                medianprops=dict(color=PALETTE["blue"], linewidth=2),
+                whiskerprops=dict(color=PALETTE["muted"]),
+                capprops=dict(color=PALETTE["muted"]))
+    plt.xticks(rotation=20)
+    plt.ylabel("Validation accuracy (%)")
+    plt.title("Accuracy distribution per model")
+    out.parent.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=200)
+    plt.savefig(out, dpi=220)
     plt.close()
 
 
-def parse_learning_curve(log_path: Path) -> Dict[str, List[float]]:
-    """
-    Extract per-epoch train/val loss and val accuracy from a training log.
-    """
+def parse_training_curve(log_path: Path) -> Dict[str, List[float]]:
+    import re
+
     if not log_path.exists():
         raise FileNotFoundError(log_path)
-
-    pattern = re.compile(
+    pat = re.compile(
         r"Epoch\s+(\d+)/\d+\s+-\s+train_loss:\s+([0-9.]+)\s+-\s+val_loss:\s+([0-9.]+)\s+-\s+val_acc:\s+([0-9.]+)%"
     )
-    epochs: List[int] = []
-    train_loss: List[float] = []
-    val_loss: List[float] = []
-    val_acc: List[float] = []
-
+    data = []
     with log_path.open("r", encoding="utf-8") as f:
         for line in f:
-            match = pattern.search(line)
-            if not match:
-                continue
-            epochs.append(int(match.group(1)))
-            train_loss.append(float(match.group(2)))
-            val_loss.append(float(match.group(3)))
-            val_acc.append(float(match.group(4)))
-
-    if not epochs:
-        raise ValueError("No epoch rows found in log")
-
-    # Ensure in order (defensive in case of shuffling)
-    ordered = sorted(zip(epochs, train_loss, val_loss, val_acc), key=lambda x: x[0])
-    epochs, train_loss, val_loss, val_acc = map(list, zip(*ordered))
-    return {
-        "epochs": epochs,
-        "train_loss": train_loss,
-        "val_loss": val_loss,
-        "val_acc": val_acc,
-    }
+            m = pat.search(line)
+            if m:
+                data.append((int(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4))))
+    if not data:
+        raise ValueError(f"No epoch metrics found in {log_path}")
+    data.sort(key=lambda x: x[0])
+    epochs, train_loss, val_loss, val_acc = zip(*data)
+    return {"epochs": epochs, "train_loss": train_loss, "val_loss": val_loss, "val_acc": val_acc}
 
 
-def plot_learning_curve(curve: Dict[str, List[float]],
-                        output_path: Path,
-                        title: str) -> None:
+def plot_training_curve(curve: Dict[str, List[float]], out: Path, title: str) -> None:
     plt.figure(figsize=(9, 4.5))
     epochs = curve["epochs"]
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, curve["train_loss"], marker="o", color=PALETTE["blue"], linewidth=2, label="Train loss")
+    plt.plot(epochs, curve["val_loss"], marker="s", color=PALETTE["amber"], linewidth=2, label="Val loss")
+    plt.xlabel("Epoch"); plt.ylabel("Loss"); plt.title("Loss vs epoch"); plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, curve["val_acc"], marker="^", color=PALETTE["green"], linewidth=2, label="Val accuracy")
     best_idx = max(range(len(curve["val_acc"])), key=lambda i: curve["val_acc"][i])
-    best_epoch = epochs[best_idx]
-    best_acc = curve["val_acc"][best_idx]
+    best_ep, best_acc = epochs[best_idx], curve["val_acc"][best_idx]
+    plt.axhline(best_acc, color=PALETTE["muted"], linestyle="--", linewidth=1)
+    plt.axvline(best_ep, color=PALETTE["muted"], linestyle="--", linewidth=1)
+    plt.text(best_ep, best_acc + 0.3, f"Best {best_acc:.2f}% @ {best_ep}", ha="center", fontsize=9, color=PALETTE["text"])
+    plt.xlabel("Epoch"); plt.ylabel("Accuracy (%)"); plt.title("Accuracy vs epoch"); plt.legend()
 
-    ax1 = plt.gca()
-    ax1.plot(epochs, curve["train_loss"], label="Train loss",
-             color=PALETTE["blue"], marker="o", linewidth=2)
-    ax1.plot(epochs, curve["val_loss"], label="Val loss",
-             color=PALETTE["amber"], marker="o", linewidth=2)
-    ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("Loss")
-
-    ax2 = ax1.twinx()
-    ax2.plot(epochs, curve["val_acc"], label="Val accuracy (%)",
-             color=PALETTE["green"], linestyle="--", linewidth=2, marker="s", markersize=5)
-    ax2.set_ylabel("Validation accuracy (%)")
-    ax2.axvline(best_epoch, color=PALETTE["slate"], linestyle="--", alpha=0.5)
-    ax2.scatter([best_epoch], [best_acc], color=PALETTE["green"], edgecolor=PALETTE["slate"], zorder=5)
-    ax2.text(best_epoch, best_acc + 0.5,
-             f"Best {best_acc:.2f}% @ epoch {best_epoch}",
-             ha="center", va="bottom", fontsize=9, color=PALETTE["slate"])
-
-    lines, labels = [], []
-    for ax in (ax1, ax2):
-        ln, lb = ax.get_legend_handles_labels()
-        lines += ln
-        labels += lb
-    ax1.legend(lines, labels, loc="center right", bbox_to_anchor=(1.18, 0.5))
-
-    plt.title(title)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.suptitle(title, fontsize=15, y=1.02)
+    out.parent.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.savefig(out, dpi=240, bbox_inches="tight")
     plt.close()
 
 
 def write_report(md_path: Path,
-                 runs: List[dict],
-                 best_scores: List[Tuple[str, float]],
-                 top: List[dict],
+                 best: List[Tuple[str, float]],
+                 best_run: Optional[Dict[str, str]],
                  chart_paths: Dict[str, Path],
-                 best_run: Optional[dict]) -> None:
-    lines = []
-    lines.append("# Model Performance Report")
-    lines.append("")
-    if runs:
-        lines.append(f"- Total runs: **{len(runs)}**")
-        ref = best_run or max(runs, key=lambda r: float(r.get("best_acc", 0) or 0))
-        lines.append(f"- Best overall: **{ref.get('model','')}** "
-                     f"({ref.get('timestamp','')}) "
-                     f"at **{float(ref.get('best_acc',0) or 0):.2f}%**")
-        accs = []
-        for r in runs:
-            try:
-                accs.append(float(r.get("best_acc", "") or 0))
-            except ValueError:
-                continue
-        if accs:
-            lines.append(f"- Mean accuracy: **{statistics.mean(accs):.2f}%**; "
-                         f"median: **{statistics.median(accs):.2f}%**")
-    lines.append("")
-    if chart_paths.get("best_per_model"):
-        lines.append(f"![Best per model]({chart_paths['best_per_model'].as_posix()})")
-    if chart_paths.get("top_runs"):
-        lines.append(f"![Top runs]({chart_paths['top_runs'].as_posix()})")
-    if chart_paths.get("runs_over_time"):
-        lines.append(f"![Runs over time]({chart_paths['runs_over_time'].as_posix()})")
-    if chart_paths.get("acc_hist"):
-        lines.append(f"![Accuracy distribution]({chart_paths['acc_hist'].as_posix()})")
-    if chart_paths.get("learning_curve"):
-        tag = ""
-        if best_run:
-            tag = f" ({best_run.get('model','')} {best_run.get('timestamp','')})"
-        lines.append(f"![Learning curve{tag}]({chart_paths['learning_curve'].as_posix()})")
-    lines.append("")
-
-    def table(headers, rows):
-        out = ["| " + " | ".join(headers) + " |",
-               "| " + " | ".join(["---"] * len(headers)) + " |"]
-        out.extend(["| " + " | ".join(row) + " |" for row in rows])
-        return "\n".join(out)
-
-    if best_scores:
-        lines.append("## Best accuracy per model")
-        rows = [[m, f"{acc:.2f}%"] for m, acc in best_scores]
-        lines.append(table(["Model", "Best Acc"], rows))
+                 training_charts: List[Path]) -> None:
+    lines = ["# Model Performance Report", ""]
+    if best_run:
+        lines.append(f"- Best run: **{best_run.get('model','')}** ({best_run.get('timestamp','')}) "
+                     f"at **{float(best_run.get('best_acc',0) or 0):.2f}%**")
+        lines.append(f"- Epochs: {best_run.get('epochs','?')} | Batch: {best_run.get('batch_size','?')} | LR: {best_run.get('lr','?')}")
         lines.append("")
-    if top:
-        lines.append("## Top runs")
-        rows = []
-        for r in top:
-            rows.append([
-                r.get("timestamp", ""),
-                r.get("model", ""),
-                f"{float(r.get('best_acc',0) or 0):.2f}%",
-                r.get("epochs", ""),
-                r.get("batch_size", ""),
-                r.get("lr", ""),
-                r.get("notes", ""),
-            ])
-        lines.append(table(
-            ["Timestamp", "Model", "Best Acc", "Epochs", "Batch", "LR", "Notes"],
-            rows))
-        lines.append("")
-
+    if chart_paths.get("bar"):
+        lines.append("## Accuracy summary")
+        lines.append(f"![Mean/std per model]({chart_paths['bar'].as_posix()})")
+    if chart_paths.get("box"):
+        lines.append(f"![Accuracy distribution per model]({chart_paths['box'].as_posix()})")
+    if training_charts:
+        lines.append("## Training curves (best per model)")
+        for p in training_charts:
+            lines.append(f"![Training curve]({p.as_posix()})")
     md_path.parent.mkdir(parents=True, exist_ok=True)
     md_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[INFO] Wrote performance report to {md_path}")
+    print(f"[INFO] Wrote report to {md_path}")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate charts and a markdown report from training_logs/run_history.csv"
-    )
-    parser.add_argument("--history", type=Path,
-                        default=Path("training_logs/run_history.csv"))
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate professional charts and a concise performance report.")
+    parser.add_argument("--history", type=Path, default=Path("training_logs/run_history.csv"))
+    parser.add_argument("--logs_dir", type=Path, default=Path("training_logs"),
+                        help="Directory containing per-run logs for learning curves.")
+    parser.add_argument("--learning_log", type=Path,
+                        help="Specific log file for the training curve; defaults to best run log in logs_dir.")
     parser.add_argument("--charts_dir", type=Path, default=Path("charts"))
-    parser.add_argument("--out_md", type=Path,
-                        default=Path("training_logs/performance_report.md"))
-    parser.add_argument("--top", type=int, default=5,
-                        help="Number of top runs to include")
-    parser.add_argument("--logs_dir", type=Path,
-                        help="Directory containing per-run logs (defaults to the history file's parent)")
-    parser.add_argument("--learning_curve_log", type=Path,
-                        help="Specific log file to parse for the learning curve chart; "
-                             "defaults to best run's log inside --logs_dir")
+    parser.add_argument("--out_md", type=Path, default=Path("training_logs/performance_report.md"))
     args = parser.parse_args()
 
-    runs = load_runs(args.history)
-    best_run = max(runs, key=lambda r: float(r.get("best_acc", 0) or 0)) if runs else None
-    best_scores = model_best_acc(runs)
-    top = top_runs(runs, n=args.top)
-
-    chart_paths: Dict[str, Path] = {}
-    chart_paths["best_per_model"] = args.charts_dir / "best_accuracy_per_model.png"
-    chart_paths["runs_over_time"] = args.charts_dir / "runs_over_time.png"
-    chart_paths["acc_hist"] = args.charts_dir / "accuracy_distribution.png"
-    chart_paths["top_runs"] = args.charts_dir / "top_runs.png"
-
-    plot_best_per_model(best_scores, chart_paths["best_per_model"])
-    plot_runs_over_time(runs, chart_paths["runs_over_time"])
-    plot_accuracy_hist(runs, chart_paths["acc_hist"])
-    plot_top_runs(top, chart_paths["top_runs"])
-    logs_dir = args.logs_dir or args.history.parent
-    learning_log = args.learning_curve_log
-    if not learning_log and best_run:
-        learning_log = logs_dir / f"{best_run.get('model','')}_{best_run.get('timestamp','')}.log"
-    if learning_log:
+    set_style()
+    runs = load_history(args.history)
+    best_run = select_best_run(runs)
+    stats = model_stats(runs)
+    per_model_data: Dict[str, List[float]] = {}
+    for r in runs:
+        m = r.get("model", "")
         try:
-            curve = parse_learning_curve(learning_log)
-            chart_paths["learning_curve"] = args.charts_dir / "learning_curve.png"
-            title = "Learning curve"
-            if best_run:
-                title = f"Learning curve: {best_run.get('model','')} ({best_run.get('timestamp','')})"
-            plot_learning_curve(curve, chart_paths["learning_curve"], title=title)
-            print(f"[INFO] Learning curve chart saved to {chart_paths['learning_curve']} "
-                  f"(source: {learning_log})")
-        except FileNotFoundError:
-            print(f"[WARN] Learning curve log not found: {learning_log}")
-        except ValueError as exc:
-            print(f"[WARN] Could not parse learning curve from {learning_log}: {exc}")
-    write_report(args.out_md, runs, best_scores, top, chart_paths, best_run)
+            acc = float(r.get("best_acc", "") or 0)
+        except ValueError:
+            continue
+        if m:
+            per_model_data.setdefault(m, []).append(acc)
+
+    chart_paths = {
+        "bar": args.charts_dir / "accuracy_mean_std.png",
+        "box": args.charts_dir / "accuracy_box.png",
+    }
+    plot_bar_with_error(stats, chart_paths["bar"])
+    plot_per_model_box(per_model_data, chart_paths["box"])
+
+    training_curves: List[Path] = []
+    # Prefer explicit log if provided
+    if args.learning_log and args.learning_log.exists():
+        try:
+            curve = parse_training_curve(args.learning_log)
+            out_path = args.charts_dir / f"training_curve_{args.learning_log.stem}.png"
+            plot_training_curve(curve, out_path, title=f"Training curve: {args.learning_log.stem}")
+            training_curves.append(out_path)
+        except Exception as exc:  # pragma: no cover
+            print(f"[WARN] Could not render training curve from {args.learning_log}: {exc}")
+    else:
+        best_per_model_runs = best_runs_per_model(runs)
+        for model, run in best_per_model_runs.items():
+            log_path = args.logs_dir / f"{run.get('model','')}_{run.get('timestamp','')}.log"
+            if not log_path.exists():
+                print(f"[WARN] Missing log for {model}: {log_path}")
+                continue
+            try:
+                curve = parse_training_curve(log_path)
+                out_path = args.charts_dir / f"training_curve_{model}.png"
+                plot_training_curve(curve, out_path, title=f"Training curve: {model}")
+                training_curves.append(out_path)
+            except Exception as exc:  # pragma: no cover
+                print(f"[WARN] Could not render training curve from {log_path}: {exc}")
+
+    write_report(args.out_md, best_per_model(runs), best_run, chart_paths, training_curves)
 
 
 if __name__ == "__main__":

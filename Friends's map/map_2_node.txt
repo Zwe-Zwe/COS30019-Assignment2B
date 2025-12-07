@@ -1,0 +1,45 @@
+[NODES]
+1,1.501234,110.260000,Start Point - City Gate
+2,1.503500,110.261500,Market Square
+3,1.505000,110.258900,River Dock
+4,1.508000,110.263000,Old Tower
+5,1.506100,110.265500,Residential Zone A
+6,1.510000,110.268000,Industrial Hub
+
+[WAYS]
+# way_id,from_node,to_node,road_name,highway_type,travel_time_min
+
+# City Gate ↔ Market Square (Heavy traffic inbound to market)
+3001,1,2,Main Avenue,primary,5
+3002,2,1,Main Avenue,primary,3
+
+# Market Square ↔ River Dock (Toward river is slow/congested)
+3003,2,3,River Road,secondary,4
+3004,3,2,River Road,secondary,2
+
+# River Dock ↔ Old Tower (Uphill is long and slow)
+3005,3,4,Hill Climb,tertiary,7
+3006,4,3,Hill Climb,tertiary,3
+
+# Old Tower ↔ Residential Zone A (Short loop, slower when exiting A)
+3007,4,5,Service Lane,residential,2
+3008,5,4,Service Lane Reverse,service,3
+
+# Residential Zone A ↔ Industrial Hub (Rush hour from Industrial Hub is slowest)
+3009,5,6,Ring Highway,primary,6
+3010,6,5,Ring Highway,primary,8
+
+# City Gate ↔ Industrial Hub (Longest route)
+3011,1,6,Outer Bypass,secondary,10
+3012,6,1,Outer Bypass,secondary,9
+
+[CAMERAS]
+# Monitored roads (accident ⇒ time × ACCIDENT_MULTIPLIER)
+3001,images/cam_main_avenue.jpg
+3005,images/cam_hill_climb.jpg
+3010,images/cam_ring_highway.jpg
+
+[META]
+START,1
+GOAL,4,6
+ACCIDENT_MULTIPLIER,3

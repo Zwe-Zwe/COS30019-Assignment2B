@@ -7,12 +7,9 @@ from typing import Iterable, List, Tuple
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ORDER = [
-    "baseline_cnn",
     "transfer_resnet18",
     "transfer_mobilenet_v3_small",
     "efficientnet_b0",
-    "resnet_gbt",
-    "hog_svm",
 ]
 
 
@@ -46,14 +43,6 @@ def build_commands(args) -> List[Tuple[str, List[str]]]:
         if args.models:
             return name in args.models
         return name in args.include
-
-    # Baseline CNN
-    if want("baseline_cnn"):
-        cmd = [sys.executable, str(ROOT / "scripts/training/train_baseline_cnn.py")]
-        add_common_args(cmd, data_root=args.data_root, log_dir=args.log_dir,
-                        output_dir=args.output_dir, epochs=args.epochs,
-                        batch_size=args.batch_size, num_workers=args.num_workers)
-        cmds.append(("baseline_cnn", cmd))
 
     # Transfer CNN (ResNet18)
     if want("transfer_resnet18"):
@@ -89,22 +78,6 @@ def build_commands(args) -> List[Tuple[str, List[str]]]:
                         batch_size=args.batch_size, num_workers=args.num_workers)
         cmds.append(("efficientnet_b0", cmd))
 
-    # ResNet features + Gradient Boosting (classical)
-    if want("resnet_gbt") and not args.skip_classical:
-        cmd = [sys.executable, str(ROOT / "scripts/training/train_resnet_features_gbt.py")]
-        add_common_args(cmd, data_root=args.data_root, log_dir=args.log_dir,
-                        output_dir=args.output_dir, epochs=None,
-                        batch_size=args.batch_size, num_workers=args.num_workers)
-        cmds.append(("resnet_gbt", cmd))
-
-    # HOG + SVM (classical)
-    if want("hog_svm") and not args.skip_classical:
-        cmd = [sys.executable, str(ROOT / "scripts/training/train_hog_svm.py"),
-               "--data_root", str(args.data_root),
-               "--log_dir", str(args.log_dir),
-               "--output_dir", str(args.output_dir)]
-        cmds.append(("hog_svm", cmd))
-
     return cmds
 
 
@@ -138,8 +111,6 @@ def main() -> None:
                         help="Force on/off mixed precision for transfer models")
     parser.add_argument("--models", type=parse_list,
                         help="Comma-separated subset to run (default: all)")
-    parser.add_argument("--skip_classical", action="store_true",
-                        help="Skip classical models (resnet_gbt + hog_svm)")
     parser.add_argument("--dry_run", action="store_true",
                         help="Print commands without executing")
     parser.add_argument("--order", type=parse_list,

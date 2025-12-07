@@ -23,9 +23,12 @@ python3 scripts/data_prep/preprocess_dataset.py --raw_dir path/to/raw_classes --
 Otherwise ensure `data3a/training` and `data3a/validation` exist with class subfolders.
 
 4) **Make sure model weights are present**  
-Pretrained checkpoints live in `models/` (e.g., `transfer_resnet18.pth`). Train from scratch if needed:
+Pretrained checkpoints live in `models/` (`transfer_efficientnet_b0.pth`, `transfer_resnet18.pth`, `transfer_mobilenet_v3_small.pth`). Train from scratch if needed:
 ```bash
+# ResNet18
 python3 scripts/training/train_transfer_cnn.py --data_root data3a --unfreeze
+# EfficientNet-B0
+python3 scripts/training/train_efficientnet_b0.py --data_root data3a --strong_aug
 ```
 
 5) **Run the GUI (ICS)**  
@@ -44,11 +47,9 @@ python3 incident_predictor.py --model transfer_resnet18 --images path/to/img1.jp
 python3 scripts/run_scenarios.py --scenarios scenarios/sample_scenarios.json
 ```
 
-8) **Run tests**  
-```bash
-python3 -m unittest discover tests
-```
-See `docs/test_cases.md` for the 11 documented cases covered by the suite.
+8) **(Optional research) Visual evidence via Flask UI**  
+- Run the app, set an incident (way + severity), k=3–5, and capture screenshots of the map/routes.  
+- Suggested scenarios and notes are in `docs/research_initiative.md`.
 
 
 > Primary dev OS: Ubuntu 22.04 (Python 3.12.3); also exercised in Colab (Linux).
@@ -71,28 +72,21 @@ Current setup uses three classes (`01-minor`, `02-moderate`, `03-severe`).
 ## Training Models
 All training scripts read the shared hyperparameters from `training_config.py` to ensure fairness. Example commands:
 ```bash
-# Baseline CNN
-python3 scripts/training/train_baseline_cnn.py --data_root data3a
-
 # Transfer-learning CNN (ResNet18)
 python3 scripts/training/train_transfer_cnn.py --data_root data3a --unfreeze
 
 # Transfer-learning CNN (EfficientNet-B0, stronger backbone)
 python3 scripts/training/train_efficientnet_b0.py --data_root data3a --strong_aug
 
-# ResNet feature extractor + Gradient Boosted Trees
-python3 scripts/training/train_resnet_features_gbt.py --data_root data3a
-
-# HOG descriptors + SVM
-python3 scripts/training/train_hog_svm.py --data_root data3a
+# Transfer-learning CNN (MobileNet V3 Small, lightweight)
+python3 scripts/training/train_transfer_cnn.py --data_root data3a --unfreeze --model mobilenet_v3_small
 
 # Summarize logged runs
 python3 scripts/training/summarize_training_runs.py --output_md training_logs/runs.md
-# Optional: generate charts (best-per-model + runs-over-time) into a charts/ folder
-python3 scripts/training/summarize_training_runs.py --charts --chart_dir charts
-
-# Professional performance report (charts + markdown)
+# Optional: generate charts and report
 python3 scripts/training/generate_performance_report.py --history training_logs/run_history.csv --charts_dir charts --out_md training_logs/performance_report.md
+# Reset logs (start fresh run history)
+python3 scripts/training/reset_training_logs.py
 ```
 Each script saves checkpoints under `models/` and writes logs to `training_logs/`.
 
@@ -101,8 +95,8 @@ Run the unified predictor on one or more images:
 ```bash
 python3 incident_predictor.py --model transfer_resnet18 --images path/to/img1.jpg path/to/img2.jpg
 ```
-Models available: `baseline_cnn`, `transfer_resnet18`, `resnet_gbt`, `hog_svm`.
-Additional: `transfer_efficientnet_b0` (train first to use).
+Models available (exposed): `transfer_efficientnet_b0`, `transfer_resnet18`, `transfer_mobilenet_v3_small`.
+(`transfer_efficientnet_b0` is the strongest; train it first if not present.)
 
 ## Flask GUI (ICS)
 Launch the GUI integrating prediction + routing (uses Part A algorithms):
@@ -121,11 +115,10 @@ Then visit `http://127.0.0.1:5000`, select origin/destination, upload/choose inc
 * `ics/routing/search.py` contains the Part A implementations reused by the GUI.
 * `training_logger.py` mirrors console logs to files and maintains `training_logs/run_history.csv`.
 * `training_config.py` centralises shared hyperparameters; edit this file to run new experiments consistently.
-* Archived reference assets (assignment brief, sample images/html) live in `docs/archive/`; unused training variants are in `scripts/training/archive/`.
+* Archived reference assets (assignment brief, sample images/html) live in `docs/archive/`.
 * `ics/routing/k_shortest.py` provides Yen-based k-shortest path computation for reproducible top-k outputs.
 * `scripts/run_scenarios.py` executes predefined routing scenarios (see `scenarios/sample_scenarios.json`).
 * `scripts/data_prep/preprocess_dataset.py` builds train/val/test splits from a raw, classed image directory (optional resize and deterministic seed).
-* Run tests with `python -m unittest discover tests`.
 
 ## Project layout (key modules)
 - `ics/web/app.py`: Flask UI + routing/prediction glue (entrypoint shim `ics_app.py`).

@@ -1,0 +1,68 @@
+[NODES]
+1,1.5580790,110.3551000,Jalan Song Far North End (Boundary)
+2,1.5574580,110.3529614,McDonald's/Commercial Area Entrance
+3,1.5568203,110.3558762,Jalan Song Main Exit/Flyover Access Point
+4,1.5563723,110.3565432,Traffic Light Junction 1 (Central Hub)
+5,1.5556772,110.3570280,Jalan Tun Razak South Major Jct
+6,1.5549540,110.3569900,South Boundary Intersection
+7,1.5554000,110.3512720,Far West Link (Boundary)
+8,1.5570160,110.3529972,Song Commercial Midpoint
+9,1.5565745,110.3519759,Residential T-Junction
+10,1.5578000,110.3540000,North Link Intermediate
+11,1.5571740,110.3528519,Jalan Song Link South
+12,1.5560000,110.3575000,Eastern Back Street Link
+13,1.5550000,110.3585000,Far South East Jct
+14,1.5548114,110.3579789,Jalan Tun Razak Midpoint
+15,1.5569000,110.3540000,Flyover Entrance/Exit
+16,1.5570000,110.3550000,Flyover Turn-Off Intermediate Node
+
+[WAYS]
+2001,1,10,Jalan Song North Connector,primary,4
+2002,10,16,Jalan Song Main Stretch North,primary,4
+2003,16,3,Jalan Song Main Stretch South,primary,4
+2004,3,4,Traffic Hub Approach,primary,4
+2005,4,5,Tun Razak South Link,primary,4
+2006,5,6,South Boundary Road,secondary,3
+2007,6,14,Boundary to Midpoint Link,secondary,3
+2008,14,5,Midpoint to Tun Razak Jct,secondary,3
+
+2009,5,4,Tun Razak South Link (R),primary,4
+2010,4,3,Traffic Hub Approach (R),primary,4
+2011,3,16,Jalan Song Main Stretch South (R),primary,4
+2012,16,10,Jalan Song Main Stretch North (R),primary,4
+2013,10,1,Jalan Song North Connector (R),primary,4
+2014,6,5,South Boundary Road (R),secondary,3
+2015,14,6,Boundary to Midpoint Link (R),secondary,3
+2016,5,14,Midpoint to Tun Razak Jct (R),secondary,3
+
+2017,16,15,Flyover Turn-Off,primary,4  
+2018,15,16,Flyover Entry/Merge,primary,4
+2019,15,9,Residential Connector,residential,2
+2020,9,15,Residential Connector (R),residential,2
+
+2021,2,8,McDonald's to Midpoint,service,2
+2022,8,2,Midpoint to McDonald's (R),service,2
+2023,8,11,Commercial Backlink,service,2
+2024,11,8,Commercial Backlink (R),service,2
+2025,11,7,Far West Linkage,secondary,3
+2026,7,11,Far West Linkage (R),secondary,3
+
+2027,4,12,Eastern Backstreet Access,tertiary,3
+2028,12,4,Eastern Backstreet Access (R),tertiary,3
+2029,12,13,South East Perimeter,tertiary,3
+2030,13,12,South East Perimeter (R),tertiary,3
+2031,13,14,Perimeter to Midpoint,secondary,3
+2032,14,13,Perimeter to Midpoint (R),secondary,3
+
+
+[CAMERAS]
+2002,images/cam_song_main_stretch_north.jpg
+2004,images/cam_traffic_hub.jpg
+2017,images/cam_flyover_turn_off.jpg
+2027,images/cam_backstreet_access.jpg
+
+
+[META]
+START,1
+GOAL,7,13
+ACCIDENT_MULTIPLIER,3

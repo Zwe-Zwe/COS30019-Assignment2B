@@ -27,6 +27,8 @@ class RunLogger:
             "epochs",
             "batch_size",
             "lr",
+            "weight_decay",
+            "scheduler",
             "notes",
         ]
         # Create file so tailing tools can watch it immediately.
@@ -53,4 +55,3 @@ class RunLogger:
             if write_header:
                 f.write(",".join(self._summary_fields) + "\n")
             f.write(",".join(str(row[field]) for field in self._summary_fields) + "\n")
-

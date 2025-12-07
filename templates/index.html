@@ -1,236 +1,917 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kuching ICS</title>
+  <title>Kuching ICS · Future Operations</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
   <style>
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.14), transparent 28%),
-                  radial-gradient(circle at 80% 0%, rgba(249, 115, 22, 0.12), transparent 23%),
-                  #0b1120;
-      color: #e2e8f0;
-      min-height: 100vh;
+    :root {
+      --neon-cyan: #22d3ee;
+      --neon-purple: #c084fc;
+      --neon-blue: #60a5fa;
+      --neon-red: #f87171;
     }
-    #route-map { height: 420px; border-radius: 14px; overflow: hidden; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #020617;
+      /* Very dark slate */
+      color: #e2e8f0;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    .step-content {
+      display: none;
+      margin-top: 1rem;
+    }
+
+    .step-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Custom scrollbar */
+    .sidebar-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 2px;
+    }
+
+    /* Map Tooltip Styling - HUD Style */
+    .leaflet-tooltip.hud-tooltip {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--neon-cyan);
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      font-size: 11px;
+      color: #fff;
+      padding: 4px 8px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .leaflet-tooltip.hud-tooltip::before {
+      border-right-color: var(--neon-cyan);
+    }
+
+    .leaflet-tooltip.way-tooltip {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--neon-blue);
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      padding: 4px 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .camera-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ef4444;
+      filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+    }
+
+    /* Route Animation */
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+
+    .flow-line {
+      animation: dash 1s linear infinite;
+    }
   </style>
 </head>
-<body class="px-4 py-6">
-  <div class="max-w-6xl mx-auto space-y-6">
-    <header class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-2">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <p class="text-sm text-cyan-300 uppercase tracking-wider font-semibold">COS30019 · Incident Classification System</p>
-          <h1 class="text-3xl font-bold text-white">Kuching Intelligent Routing</h1>
-          <p class="text-slate-400 text-sm">Predict incidents, pick algorithms, and visualize top-k routes with live travel-time adjustments.</p>
-        </div>
-        <div class="flex gap-2">
-          <span class="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-200 text-sm font-semibold">ML Prediction</span>
-          <span class="px-3 py-1 rounded-full bg-orange-500/10 text-orange-200 text-sm font-semibold">Adaptive Routing</span>
-        </div>
-      </div>
-    </header>
 
-    <form method="post" enctype="multipart/form-data" class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl">
-      <div class="grid md:grid-cols-2 gap-4 p-5">
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Origin</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="start">
-            {% for node in nodes %}<option value="{{ node.id }}" {% if node.id == selected_start %}selected{% endif %}>{{ node.id }} - {{ node.label }}</option>{% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Destination</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="goal">
-            {% for node in nodes %}<option value="{{ node.id }}" {% if node.id == selected_goal %}selected{% endif %}>{{ node.id }} - {{ node.label }}</option>{% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Incident image (optional)</label>
-          <input type="file" name="incident_image" accept="image/*" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white">
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Affected road segment</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="incident_way">
-            <option value="">-- None --</option>
-            {% for way in ways %}<option value="{{ way.id }}" {% if way.id == selected_way %}selected{% endif %}>{{ way.label }}</option>{% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Search algorithm</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="algorithm">
-            {% for key, info in algorithm_choices.items() %}<option value="{{ key }}" {% if key == selected_algorithm %}selected{% endif %}>{{ info[0] }}</option>{% endfor %}
-          </select>
-          <p class="text-xs text-slate-500 mt-1">When requesting multiple routes, a time-aware K-shortest routine is used.</p>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Number of routes (k)</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="k_routes">
-            {% for i in range(1, max_routes + 1) %}<option value="{{ i }}" {% if i == k_routes %}selected{% endif %}>{{ i }}</option>{% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Prediction model</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="model">
-            {% for key, label in model_choices.items() %}<option value="{{ key }}" {% if key == selected_model %}selected{% endif %}>{{ label }}</option>{% endfor %}
-          </select>
-        </div>
-        <div>
-          <label class="text-sm text-slate-400 font-semibold">Manual severity (fallback)</label>
-          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="manual_severity">
-            <option value="">-- auto from image --</option>
-            {% for sev in severity_options %}<option value="{{ sev }}" {% if sev == manual_severity %}selected{% endif %}>{{ sev }}</option>{% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="flex justify-end p-5 border-t border-slate-800">
-        <button class="px-4 py-2 rounded-lg bg-cyan-500 text-slate-900 font-semibold hover:bg-cyan-400 transition">Compute Routes</button>
-      </div>
-    </form>
+<body class="m-0 p-0 h-full overflow-hidden flex">
 
-    {% if errors %}
-    <div class="bg-red-500/15 border border-red-500/40 text-red-100 px-4 py-3 rounded-xl">
-      <ul class="list-disc list-inside space-y-1">{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul>
-    </div>
-    {% endif %}
+  <!-- Left Sidebar: Wizard Context -->
+  <aside class="w-[420px] flex-none h-full border-r border-white/5 relative z-20 flex flex-col glass">
+    <div class="flex-1 overflow-y-auto sidebar-scroll p-6">
 
-    {% if prediction %}
-    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-      <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-        <div class="text-cyan-300 font-semibold">Incident prediction</div>
-      </div>
-      <div class="p-5 grid md:grid-cols-2 gap-4">
-        <div>
-          <p class="mb-1"><span class="text-slate-400">Severity:</span> <span class="font-semibold text-white">{{ prediction.class_name }}</span></p>
-          <p class="mb-1"><span class="text-slate-400">Multiplier:</span> ×{{ prediction.multiplier }}</p>
+      <!-- Header -->
+      <div class="mb-6">
+        <div class="flex items-center gap-3 mb-6">
+          <div
+            class="w-10 h-10 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 16v-4" />
+              <path d="M12 8h.01" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-white tracking-tight">KCH<span class="text-cyan-400">.OPS</span></h1>
+            <p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Intelligent Grid v2.1</p>
+          </div>
         </div>
-        <div>
-          <p class="text-slate-400 mb-1">Probabilities</p>
-          <ul class="text-sm space-y-1">
-            {% for cls, prob in prediction.probabilities.items() %}
-            <li class="flex justify-between"><span>{{ cls }}</span><span>{{ "%.2f"|format(prob * 100) }}%</span></li>
+
+        <!-- Progress Stepper -->
+        <div
+          class="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-2">
+          <span id="step-label" class="text-cyan-400">Initializing...</span>
+          <span class="text-slate-600">SYS.READY</span>
+        </div>
+        <div class="flex gap-1 h-1">
+          <div id="prog-1" class="flex-1 bg-slate-800 rounded-full transition-all duration-300"></div>
+          <div id="prog-2" class="flex-1 bg-slate-800 rounded-full transition-all duration-300"></div>
+          <div id="prog-3" class="flex-1 bg-slate-800 rounded-full transition-all duration-300"></div>
+          <div id="prog-4" class="flex-1 bg-slate-800 rounded-full transition-all duration-300"></div>
+          <div id="prog-5" class="flex-1 bg-slate-800 rounded-full transition-all duration-300"></div>
+        </div>
+      </div>
+
+      {% if errors %}
+      <div class="mb-6 border border-red-500/30 bg-red-950/30 text-red-200 px-4 py-3 rounded text-xs font-mono">
+        <span class="text-red-500 font-bold">ERR::</span> {{ errors[0] }}
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" id="wizard-form">
+
+        <!-- STEP 1: MAP SELECTION -->
+        <div id="step-1" class="step-content space-y-6">
+          <div class="space-y-1 text-center">
+            <h2 class="text-lg font-bold text-white">Target Environment</h2>
+            <p class="text-xs text-slate-500">Initialize routing graph data source.</p>
+          </div>
+
+          <div
+            class="group relative p-8 border border-dashed border-slate-700 hover:border-cyan-500/50 rounded-xl bg-slate-900/50 transition-all cursor-pointer">
+            <input type="file" name="custom_map" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              onchange="document.getElementById('file-label').innerText = this.files[0].name; document.getElementById('upload-btn').click();">
+            <div class="space-y-3 pointer-events-none group-hover:scale-105 transition-transform text-center">
+              <div
+                class="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-950/30 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+              </div>
+              <p class="text-xs font-mono text-slate-400" id="file-label">UPLOAD_SOURCE_MAP.TXT</p>
+            </div>
+            <button type="submit" name="action" value="upload_map" id="upload-btn" class="hidden"></button>
+          </div>
+
+          <div class="relative py-2 text-center">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-slate-800"></div>
+            </div>
+            <span class="relative bg-slate-900 px-2 text-[10px] text-slate-600 font-mono">OR</span>
+          </div>
+
+          <button type="submit" name="action" value="upload_map"
+            onclick="this.form.querySelector('[name=use_default]').value='true'"
+            class="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold tracking-widest uppercase transition-colors border border-slate-700 hover:border-cyan-500/30 rounded-xl">
+            Load Default Heritage Grid
+          </button>
+          <input type="hidden" name="use_default" value="false">
+        </div>
+
+        <!-- STEP 2: POINTS -->
+        <div id="step-2" class="step-content space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b border-white/5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Vector Definition</h3>
+          </div>
+
+          <div class="space-y-5">
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-cyan-400 font-mono uppercase font-bold">Origin Node</label>
+              <select
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                name="start">
+                {% for node in nodes %}<option value="{{ node.id }}" {% if node.id==selected_start %}selected{% endif
+                  %}>[{{ node.id }}] {{ node.label }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-purple-400 font-mono uppercase font-bold">Target Node</label>
+              <select
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 focus:outline-none focus:border-purple-500/50 transition-colors font-mono"
+                name="goal">
+                {% for node in nodes %}<option value="{{ node.id }}" {% if node.id==selected_goal %}selected{% endif %}>
+                  [{{ node.id }}] {{ node.label }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="pt-6 flex justify-between items-center bg-slate-900/0">
+            <button type="button" onclick="goToStep(1)"
+              class="text-xs text-slate-500 hover:text-white font-mono hover:underline">&lt; BACK</button>
+            <button type="button" onclick="goToStep(1, true)"
+              class="text-[10px] text-red-500/40 hover:text-red-400 font-mono tracking-widest">RESET::SYS</button>
+            <button type="button" onclick="goToStep(3)"
+              class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-[0_0_20px_rgba(34,211,238,0.2)]">Continue
+              &gt;&gt;</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: INCIDENT -->
+        <div id="step-3" class="step-content space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b border-white/5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Anomaly Detection</h3>
+          </div>
+
+          <div class="bg-red-950/20 border border-red-500/20 rounded-xl p-5 space-y-4 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-2 opacity-10"><svg class="w-16 h-16 text-red-500" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg></div>
+
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-red-400 font-mono uppercase font-bold">Upload Source Feed</label>
+              <input type="file" name="incident_image" accept="image/*"
+                class="w-full text-[10px] text-slate-500 file:mr-2 file:py-2 file:px-4 file:rounded file:bg-slate-800 file:text-slate-300 file:border-0 hover:file:bg-slate-700 cursor-pointer font-mono">
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-red-400 font-mono uppercase font-bold">Select Affected Segment</label>
+              <select
+                class="w-full bg-slate-900/80 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-300 font-mono"
+                name="incident_way">
+                <option value="">-- NO_ANOMALY --</option>
+                {% for way in ways %}<option value="{{ way.id }}" {% if way.id==selected_way %}selected{% endif %}>{{
+                  way.label }}{% if way.has_camera %} [📷]{% endif %}</option>{% endfor %}
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1.5">
+                <label class="text-[10px] text-slate-500 font-mono uppercase">Model Arch</label>
+                <select
+                  class="w-full bg-slate-900/80 border border-slate-700 rounded-lg p-2 text-[10px] text-slate-300 font-mono"
+                  name="model">
+                  {% for key, label in model_choices.items() %}<option value="{{ key }}" {% if key==selected_model
+                    %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] text-slate-500 font-mono uppercase">Severity Level</label>
+                <select
+                  class="w-full bg-slate-900/80 border border-slate-700 rounded-lg p-2 text-[10px] text-slate-300 font-mono"
+                  name="manual_severity">
+                  <option value="">AUTO_DETECT</option>
+                  {% for sev in severity_options %}<option value="{{ sev }}" {% if sev==manual_severity %}selected{%
+                    endif %}>{{ sev }}</option>{% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-6 flex justify-between">
+            <button type="button" onclick="goToStep(2)"
+              class="text-xs text-slate-500 hover:text-white font-mono hover:underline">&lt; BACK</button>
+            <button type="button" onclick="goToStep(4)"
+              class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-[0_0_20px_rgba(34,211,238,0.2)]">Continue
+              &gt;&gt;</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: PARAMS -->
+        <div id="step-4" class="step-content space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b border-white/5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Computation Config</h3>
+          </div>
+
+          <div class="space-y-5">
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-cyan-400 font-mono uppercase font-bold">Search Algorithm</label>
+              <select
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                name="algorithm">
+                {% for key, info in algorithm_choices.items() %}<option value="{{ key }}" {% if key==selected_algorithm
+                  %}selected{% endif %}>{{ info[0] }}</option>{% endfor %}
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-[10px] text-cyan-400 font-mono uppercase font-bold">
+                Top-K Routes <span class="text-slate-500 font-normal normal-case">(History on R1 only)</span>
+              </label>
+              <select
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 focus:outline-none focus:border-cyan-500/50 transition-colors font-mono"
+                name="k_routes">
+                {% for i in range(1, max_routes + 1) %}<option value="{{ i }}" {% if i==k_routes %}selected{% endif %}>
+                  {{ i }} Routes</option>{% endfor %}
+              </select>
+            </div>
+
+          </div>
+
+          <div class="pt-8 flex justify-between items-center">
+            <button type="button" onclick="goToStep(3)"
+              class="text-xs text-slate-500 hover:text-white font-mono hover:underline">&lt; BACK</button>
+            <button type="submit" name="action" value="calculate"
+              class="flex-1 ml-6 py-3 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-600 text-white font-bold text-xs uppercase tracking-[0.1em] hover:brightness-110 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all">
+              Execute Simulation
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 5: RESULTS -->
+        <div id="step-5" class="step-content space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b border-white/5">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Analysis Report</h3>
+          </div>
+
+          {% if prediction %}
+          <div class="border border-red-500/30 bg-gradient-to-br from-red-950/40 to-transparent p-4 rounded-lg">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-[10px] font-mono text-red-400 uppercase">Anomaly Detected</span>
+              <span class="text-[10px] font-mono text-white bg-red-600/50 px-1 rounded-sm">CONF:
+                {{"%.0f"|format(prediction.probabilities[prediction.class_name]*100)}}%</span>
+            </div>
+            <div class="flex justify-between items-end">
+              <p class="text-lg font-bold text-white leading-none">{{ prediction.class_name|replace('_', ' ')|upper }}
+              </p>
+              <p class="text-2xl font-mono font-bold text-red-500 leading-none">×{{ prediction.multiplier }}</p>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if routes %}
+          <div class="space-y-3">
+            <p class="text-[9px] font-mono uppercase tracking-wider text-slate-500">Route Candidates</p>
+            {% for route in routes %}
+            <div
+              class="route-card relative group bg-slate-900/40 border-l-2 border-slate-700 hover:border-cyan-400 rounded-r-lg p-3 transition-all duration-300">
+              <div onclick="renderRoute({{ loop.index0 }})" class="cursor-pointer flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                  <div class="w-2 h-2 rounded-full"
+                    style="background-color: {{ route_geometries[loop.index0].color }}; Box-shadow: 0 0 8px {{ route_geometries[loop.index0].color }}">
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-200 uppercase tracking-wide mb-0.5">{{ route.label }}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">{{ route.nodes|length }} NDS // {{
+                      route.edges[0].name if route.edges else 'Start' }}</div>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-mono font-bold text-cyan-400">{{ "%.1f"|format(route.cost) }}<span
+                      class="text-[9px] text-cyan-500/50">min</span></p>
+                </div>
+              </div>
+
+              <div class="mt-2 pt-2 border-t border-white/5 flex justify-end">
+                <button type="button" onclick="initSimulation({{ loop.index0 }})"
+                  class="text-[9px] font-mono uppercase text-cyan-500 hover:text-cyan-300 flex items-center gap-1 transition-colors">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 12a9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Run Animation
+                </button>
+              </div>
+            </div>
             {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-    {% if route_geometries %}
-    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-      <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-        <div class="text-cyan-300 font-semibold">Map view</div>
-      </div>
-      <div class="p-4">
-        <div id="route-map"></div>
-      </div>
-    </div>
-    {% endif %}
-
-    {% if routes %}
-    <div class="space-y-3">
-      {% for route in routes %}
-      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-lg">
-        <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-          <div class="flex items-center gap-3 flex-wrap">
-            <span class="px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 text-sm font-semibold">{{ route.label }}</span>
-            <span class="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-200 text-sm font-semibold">{{ algorithm_choices[route.algorithm][0] }}</span>
           </div>
-          <div class="text-cyan-200 font-semibold">{{ "%.2f"|format(route.cost) }} min</div>
-        </div>
-        <div class="p-5 space-y-3">
-          <p class="text-sm text-slate-400"><span class="text-slate-300 font-semibold">Node sequence:</span> {{ route.nodes | join(" → ") }}</p>
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead class="text-slate-300 bg-slate-800/80">
-                <tr>
-                  <th class="px-3 py-2 text-left">From</th>
-                  <th class="px-3 py-2 text-left">To</th>
-                  <th class="px-3 py-2 text-left">Road</th>
-                  <th class="px-3 py-2 text-left">Way ID</th>
-                  <th class="px-3 py-2 text-left">Camera?</th>
-                  <th class="px-3 py-2 text-left">Time (min)</th>
-                  <th class="px-3 py-2 text-left">Multiplier</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-800">
-                {% for edge in route.edges %}
-                <tr>
-                  <td class="px-3 py-2">{{ edge.from_node }}</td>
-                  <td class="px-3 py-2">{{ edge.to }}</td>
-                  <td class="px-3 py-2">{{ edge.name }}</td>
-                  <td class="px-3 py-2">{{ edge.way_id }}</td>
-                  <td class="px-3 py-2">
-                    {% if edge.is_camera %}<span class="px-2 py-1 rounded bg-red-500/20 text-red-200 text-xs font-semibold">Yes</span>
-                    {% else %}<span class="px-2 py-1 rounded bg-slate-700 text-slate-200 text-xs font-semibold">No</span>
-                    {% endif %}
-                  </td>
-                  <td class="px-3 py-2">{{ "%.2f"|format(edge.applied_time) }}</td>
-                  <td class="px-3 py-2">{{ "%.2f"|format(edge.multiplier) }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+          {% else %}
+          <div
+            class="p-4 border border-yellow-500/20 bg-yellow-900/10 text-yellow-500 text-xs font-mono text-center rounded-lg">
+            NO_VALID_PATH_FOUND
+          </div>
+          {% endif %}
+
+          <div class="pt-6 grid grid-cols-2 gap-3">
+            <button type="button" onclick="goToStep(4)"
+              class="py-4 rounded-lg border border-slate-700 text-slate-400 font-mono text-[10px] uppercase tracking-widest hover:border-cyan-500 hover:text-white transition-colors bg-slate-900/50">
+              &lt; Modify Config
+            </button>
+            <button type="submit" name="action" value="reset"
+              class="py-4 rounded-lg border border-red-900/30 text-red-500/50 font-mono text-[10px] uppercase tracking-widest hover:bg-red-950/20 hover:text-red-400 transition-colors bg-slate-900/50">
+              New Session
+            </button>
           </div>
         </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% elif routes is not none %}
-    <div class="bg-amber-500/10 border border-amber-500/40 text-amber-100 px-4 py-3 rounded-xl">No routes found for the chosen inputs.</div>
-    {% endif %}
-  </div>
 
+      </form>
+
+      <!-- Footer -->
+      <div class="pt-6 mt-8 border-t border-white/5 flex justify-between items-center opacity-40">
+        <span class="text-[9px] font-mono text-slate-500">SYS.STATUS: ONLINE</span>
+        <span class="text-[9px] font-mono text-slate-500">v2.4.1</span>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Right Area: Map -->
+  <main class="flex-1 h-full relative z-10 bg-[#020617]">
+    <div id="route-map" class="absolute inset-0 w-full h-full outline-none z-10"></div>
+
+    <!-- Simulation Player Controls (Floating) -->
+    <div id="simulation-controls"
+      class="hidden absolute bottom-8 left-1/2 -translate-x-1/2 z-[1100] glass px-6 py-4 rounded-xl border border-cyan-500/50 flex flex-col items-center gap-3 shadow-[0_0_50px_rgba(0,0,0,0.8)] min-w-[320px]">
+
+      <!-- Info Header -->
+      <div class="w-full flex justify-between items-center border-b border-white/10 pb-2 mb-1">
+        <span class="text-[10px] font-mono uppercase text-cyan-400 font-bold tracking-widest">Simulation Active</span>
+        <button onclick="closeSimulation()" class="text-slate-500 hover:text-red-400 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Progress Info -->
+      <div class="w-full flex justify-between text-[10px] font-mono text-slate-300">
+        <span id="sim-status">READY</span>
+        <span id="sim-step-count">0 / 0</span>
+      </div>
+
+      <!-- Main Controls -->
+      <div class="flex items-center gap-4">
+        <button onclick="stepSim(-1)" class="p-2 rounded-full hover:bg-white/10 text-slate-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <button onclick="togglePlay()" id="btn-play-pause"
+          class="w-12 h-12 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all hover:scale-105">
+          <svg id="icon-play" class="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+          <svg id="icon-pause" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+          </svg>
+        </button>
+
+        <button onclick="stepSim(1)" class="p-2 rounded-full hover:bg-white/10 text-slate-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Speed Slider -->
+      <div class="w-full flex items-center gap-3 pt-2">
+        <span class="text-[9px] font-mono text-slate-500">SPEED</span>
+        <input type="range" min="100" max="1000" step="100" value="500"
+          class="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+          oninput="changeSpeed(this.value)">
+        <span id="sim-speed-val" class="text-[9px] font-mono text-cyan-400 w-8 text-right">1.0x</span>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="absolute bottom-6 left-6 z-[1000] glass px-4 py-3 min-w-[180px] rounded-lg border-l-2 border-cyan-500">
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest">Network Grid</h4>
+      </div>
+      <div class="space-y-1.5 text-[10px] font-mono font-medium text-slate-300">
+        <div class="flex items-center gap-2" title="High-capacity urban road (Main Highway)">
+          <span class="w-3 h-3 bg-cyan-500/20 border border-cyan-500 rounded-sm"></span>
+          <span>Arterial (Primary)</span>
+        </div>
+        <div class="flex items-center gap-2" title="Moves traffic from local streets to arterials">
+          <span class="w-3 h-3 bg-purple-500/20 border border-purple-500 rounded-sm"></span>
+          <span>Collector (Secondary)</span>
+        </div>
+        <div class="flex items-center gap-2" title="Low speed, direct access to properties">
+          <span class="w-3 h-3 bg-blue-500/20 border border-blue-500 rounded-sm"></span>
+          <span>Local (Tertiary)</span>
+        </div>
+        <div class="h-px bg-white/10 my-1"></div>
+
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 rounded-full border border-red-500/50 flex items-center justify-center">
+            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+          </div>
+          <span class="text-red-400">Monitoring Node</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 bg-red-500/20 border border-red-500 rounded-sm animate-pulse"></span>
+          <span class="text-red-400">High Risk Zone</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    /* Animation Helpers */
+    .sim-marker {
+      fill: #22d3ee;
+      fill-opacity: 1;
+      stroke: #fff;
+      stroke-width: 2;
+      filter: drop-shadow(0 0 8px #22d3ee);
+      transition: all 0.2s linear;
+    }
+
+    .visited-marker {
+      fill: #fbbf24;
+      /* Amber-400 */
+      fill-opacity: 0.6;
+      stroke: #f59e0b;
+      stroke-width: 1;
+      animation: pulse-visit 0.5s ease-out;
+    }
+
+    @keyframes pulse-visit {
+      0% {
+        r: 0;
+        fill-opacity: 1;
+      }
+
+      100% {
+        r: 6;
+        fill-opacity: 0.3;
+      }
+    }
+
+    .goal-marker {
+      fill: #10b981;
+      /* Emerald-500 */
+      fill-opacity: 0.8;
+      stroke: #059669;
+      stroke-width: 2;
+      animation: pulse-goal 0.8s infinite alternate;
+    }
+
+    @keyframes pulse-goal {
+      0% {
+        transform: scale(1);
+      }
+
+      100% {
+        transform: scale(1.2);
+      }
+    }
+  </style>
+
+  <!-- LEAFLET JS -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const routeGeoms = {{ route_geometries|tojson }};
-    const mapCenter = {{ map_center|tojson }};
-    const startMarker = {{ start_coords|tojson }};
-    const goalMarker = {{ goal_coords|tojson }};
-    const incidentGeom = {{ incident_geometry|tojson }};
+    const routeGeoms = {{ route_geometries| tojson }};
+    const mapCenter = {{ map_center| tojson }};
+    const allNodes = {{ all_nodes| tojson }};
+    const allWays = {{ all_ways | default ([]) | tojson }};
+    const allCameras = {{ cameras | default ({}) | tojson }}; // Default as Dict, not List
+    const incidentGeom = {{ incident_geometry| tojson }};
+    const allRoutes = {{ routes | tojson }}; // Pass full route objects for history access
+    let initialStep = {{ active_step }};
 
-    if (routeGeoms.length > 0 && document.getElementById('route-map')) {
-      const map = L.map('route-map').setView([mapCenter.lat, mapCenter.lon], 15);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+    let map = null;
+    let routeLayers = [];
 
-      const bounds = [];
-      routeGeoms.forEach((route) => {
-        const latlngs = route.coords.map(c => {
-          bounds.push([c.lat, c.lon]);
-          return [c.lat, c.lon];
-        });
-        L.polyline(latlngs, {
-          color: route.color,
-          weight: 5,
-          opacity: 0.9
-        }).addTo(map).bindPopup(`${route.label}<br>Total time: ${route.cost.toFixed(2)} min`);
+    // -- SIMULATION STATE --
+    let simState = {
+      active: false,
+      playing: false,
+      timer: null,
+      routeIdx: -1,
+      stepIdx: 0,
+      nodes: [],
+      marker: null,
+      speed: 500 // ms
+    };
+
+    function initSimulation(routeIndex) {
+      const route = allRoutes[routeIndex];
+      if (!route) return;
+
+      // Reset state
+      closeSimulation();
+
+      simState.active = true;
+      simState.routeIdx = routeIndex;
+      // ALWAYS use the actual path nodes for "Simulation Travel" as requested
+      simState.nodes = route.nodes;
+      simState.stepIdx = 0;
+
+      // Show controls
+      document.getElementById('simulation-controls').classList.remove('hidden');
+      renderRoute(routeIndex); // Ensure track is visible
+      updateSimUI();
+
+      // Create avatar
+      renderSimStep();
+    }
+
+    function closeSimulation() {
+      if (simState.timer) clearInterval(simState.timer);
+      if (simState.marker) map.removeLayer(simState.marker);
+
+      simState.active = false;
+      simState.playing = false;
+      simState.timer = null;
+      simState.marker = null;
+
+      document.getElementById('simulation-controls').classList.add('hidden');
+      updateSimUI();
+    }
+
+    function togglePlay() {
+      if (!simState.active) return;
+
+      simState.playing = !simState.playing;
+      updateSimUI();
+
+      if (simState.playing) {
+        simState.timer = setInterval(() => {
+          stepSim(1);
+        }, simState.speed);
+      } else {
+        if (simState.timer) clearInterval(simState.timer);
+        simState.timer = null;
+      }
+    }
+
+    function stepSim(delta) {
+      if (!simState.active) return;
+
+      let next = simState.stepIdx + delta;
+      if (next < 0) next = 0;
+      if (next >= simState.nodes.length) {
+        next = simState.nodes.length - 1;
+        // Auto pause at end
+        if (simState.playing) togglePlay();
+      }
+
+      simState.stepIdx = next;
+      renderSimStep();
+      updateSimUI();
+    }
+
+    function changeSpeed(val) {
+      // Slider is 100 (fast) to 1000 (slow), inverted logically?
+      // Let's make slider left=slow, right=fast
+      // Input: 100..1000. Let's map small value = fast? No.
+      // Let's implement: Left (1000ms) -> Right (100ms)
+      simState.speed = 1100 - val;
+
+      const rate = (1000 / simState.speed).toFixed(1);
+      document.getElementById('sim-speed-val').innerText = rate + "x";
+
+      if (simState.playing) {
+        clearInterval(simState.timer);
+        simState.timer = setInterval(() => {
+          stepSim(1);
+        }, simState.speed);
+      }
+    }
+
+    function renderSimStep() {
+      const nodeId = simState.nodes[simState.stepIdx];
+      const node = allNodes[nodeId];
+      if (!node) return;
+
+      if (!simState.marker) {
+        simState.marker = L.circleMarker([node.lat, node.lon], {
+          className: 'sim-marker',
+          radius: 8
+        }).addTo(map);
+      } else {
+        simState.marker.setLatLng([node.lat, node.lon]);
+      }
+
+      // Pan map if out of view? Optional.
+      // map.panTo([node.lat, node.lon]); 
+    }
+
+    function updateSimUI() {
+      // Update Step Counter
+      document.getElementById('sim-step-count').innerText = `${simState.stepIdx + 1} / ${simState.nodes.length}`;
+
+      // Update Play/Pause Icon
+      const playIcon = document.getElementById('icon-play');
+      const pauseIcon = document.getElementById('icon-pause');
+      if (simState.playing) {
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        document.getElementById('sim-status').innerText = "RUNNING...";
+        document.getElementById('sim-status').className = "text-cyan-400 animate-pulse";
+      } else {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        document.getElementById('sim-status').innerText = "PAUSED";
+        document.getElementById('sim-status').className = "text-slate-500";
+      }
+    }
+
+    function goToStep(step, reset) {
+      // ... (rest of logic remains same)
+      if (reset) {
+        const btn = document.createElement('button');
+        btn.type = 'submit';
+        btn.name = 'action';
+        btn.value = 'reset';
+        btn.style.display = 'none';
+        document.getElementById('wizard-form').appendChild(btn);
+        btn.click();
+        return;
+      }
+
+      document.querySelectorAll('.step-content').forEach(el => {
+        el.classList.remove('active');
       });
+      const target = document.getElementById(`step-${step}`);
+      if (target) target.classList.add('active');
+
+      const labels = { 1: "GRAPH_INIT", 2: "VECTOR_DEF", 3: "ANOMALY_SCAN", 4: "COMPUTE_CFG", 5: "REPORT_VIEW" };
+      const desc = document.getElementById('step-label');
+      if (desc) desc.innerText = labels[step] || "READY";
+
+      for (let i = 1; i <= 5; i++) {
+        const bar = document.getElementById(`prog-${i}`);
+        if (i < step) bar.className = "flex-1 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.4)]";
+        else if (i === step) bar.className = "flex-1 bg-white rounded-full animate-pulse";
+        else bar.className = "flex-1 bg-slate-800 rounded-full";
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      goToStep(initialStep);
+      initMap();
+      if (initialStep === 5 && routeGeoms.length > 0) renderRoute(0);
+    });
+
+    function getRoadStyle(highwayType, isCamera) {
+      if (isCamera) return { color: '#f87171', weight: 2, opacity: 0.9 };
+      switch (highwayType) {
+        case 'primary': return { color: '#22d3ee', weight: 1.5, opacity: 0.5 };
+        case 'secondary': return { color: '#c084fc', weight: 1.2, opacity: 0.4 };
+        case 'tertiary': return { color: '#60a5fa', weight: 1, opacity: 0.3 };
+        default: return { color: '#475569', weight: 0.8, opacity: 0.2 };
+      }
+    }
+
+    function initMap() {
+      const mapEl = document.getElementById('route-map');
+      if (!mapEl) return;
+
+      map = L.map('route-map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([mapCenter.lat, mapCenter.lon], 15);
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+
+      // 1. WAYS
+      if (allWays && allWays.length > 0 && allNodes) {
+        allWays.forEach(way => {
+          const fromNode = allNodes[way.from];
+          const toNode = allNodes[way.to];
+          if (fromNode && toNode) {
+            const style = getRoadStyle(way.highway_type, way.is_camera);
+            const poly = L.polyline([[fromNode.lat, fromNode.lon], [toNode.lat, toNode.lon]], style)
+              .addTo(map);
+
+            poly.bindTooltip(way.road_name, {
+              sticky: true,
+              className: 'way-tooltip',
+              direction: 'top'
+            });
+
+            poly.on('mouseover', function (e) {
+              this.setStyle({ color: '#fff', weight: 3, opacity: 1 });
+            });
+            poly.on('mouseout', function (e) {
+              this.setStyle(style);
+            });
+          }
+        });
+      }
+
+      // 2. NODES (With Invisible Large Hitbox)
+      if (allNodes) {
+        Object.entries(allNodes).forEach(([id, info]) => {
+          // 2a. Visual Dot (Small)
+          const m = L.circleMarker([info.lat, info.lon], {
+            color: 'transparent', fillColor: '#fff', fillOpacity: 0.3, radius: 2
+          }).addTo(map);
+
+          m.bindTooltip(`${id}`, {
+            permanent: true, direction: 'right', className: 'hud-tooltip', offset: [4, 0]
+          });
+
+          // 2b. Hitbox (Invisible, Larger)
+          const hit = L.circleMarker([info.lat, info.lon], {
+            color: 'transparent', fillColor: 'transparent', fillOpacity: 0, radius: 10
+          }).addTo(map);
+
+          // Use Hitbox for interactions
+          hit.on('mouseover', function () {
+            m.setStyle({ radius: 6, fillOpacity: 1, color: '#22d3ee' });
+            m.setTooltipContent(`<span class="text-cyan-400 font-bold">${id}</span> ${info.label}`);
+          });
+          hit.on('mouseout', function () {
+            m.setStyle({ radius: 2, fillOpacity: 0.3, color: 'transparent' });
+            m.setTooltipContent(`${id}`);
+          });
+        });
+      }
+
+      // 3. CAMERAS (Iterate Dict { way_id: asset })
+      if (allCameras && Object.keys(allCameras).length > 0 && allWays) {
+        Object.entries(allCameras).forEach(([camWayId, asset]) => {
+          // Find way to get coordinates
+          const way = allWays.find(w => String(w.way_id) === String(camWayId));
+          if (way && allNodes[way.from] && allNodes[way.to]) {
+            const n1 = allNodes[way.from];
+            const n2 = allNodes[way.to];
+            const midLat = (n1.lat + n2.lat) / 2;
+            const midLon = (n1.lon + n2.lon) / 2;
+
+            const camIcon = L.divIcon({
+              className: 'camera-icon',
+              html: `<div class="relative w-6 h-6 flex items-center justify-center">
+                                 <div class="absolute inset-0 bg-red-500/20 rounded-full animate-pulse"></div>
+                                 <svg class="w-4 h-4 text-red-500 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                 </svg>
+                               </div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
+
+            L.marker([midLat, midLon], { icon: camIcon })
+              .addTo(map)
+              .bindTooltip(`Traffic Cam (Way ${camWayId})`, {
+                direction: 'top',
+                className: 'hud-tooltip',
+                offset: [0, -10]
+              });
+          }
+        });
+      }
 
       if (incidentGeom) {
         const line = L.polyline([
           [incidentGeom.from.lat, incidentGeom.from.lon],
           [incidentGeom.to.lat, incidentGeom.to.lon],
-        ], { color: '#ef4444', weight: 6, opacity: 0.85, dashArray: '6 8' }).addTo(map);
-        line.bindPopup(`Incident on ${incidentGeom.road_name} (Way ${incidentGeom.way_id})<br>Severity: ${incidentGeom.severity || 'n/a'}`);
-        bounds.push([incidentGeom.from.lat, incidentGeom.from.lon]);
-        bounds.push([incidentGeom.to.lat, incidentGeom.to.lon]);
-      }
-
-      L.circleMarker([startMarker.lat, startMarker.lon], {color: '#22d3ee', radius: 7})
-        .addTo(map).bindPopup(`Start<br>${startMarker.id}: ${startMarker.label}`);
-      L.circleMarker([goalMarker.lat, goalMarker.lon], {color: '#f97316', radius: 7})
-        .addTo(map).bindPopup(`Goal<br>${goalMarker.id}: ${goalMarker.label}`);
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, {padding: [20, 20]});
+        ], { color: '#f87171', weight: 4, opacity: 1, dashArray: '4, 8' }).addTo(map);
+        setInterval(() => { line.setStyle({ opacity: line.options.opacity === 1 ? 0.5 : 1 }); }, 800);
       }
     }
+
+    window.renderRoute = function (routeIndex) {
+      if (!map) return;
+      routeLayers.forEach(layer => map.removeLayer(layer));
+      routeLayers = [];
+
+      const route = routeGeoms.find(r => r.id === routeIndex);
+      if (!route) return;
+
+      const latlngs = route.coords.map(c => [c.lat, c.lon]);
+      routeLayers.push(L.polyline(latlngs, { color: route.color, weight: 12, opacity: 0.15 }).addTo(map));
+      routeLayers.push(L.polyline(latlngs, { color: route.color, weight: 3, opacity: 1 }).addTo(map));
+      routeLayers.push(L.polyline(latlngs, { color: '#fff', weight: 2, opacity: 0.6, dashArray: '5, 10', className: 'flow-line' }).addTo(map));
+
+      const start = route.coords[0];
+      const goal = route.coords[route.coords.length - 1];
+
+      routeLayers.push(L.circleMarker([start.lat, start.lon], { color: '#22d3ee', fillColor: '#000', fillOpacity: 1, radius: 6, weight: 3 }).addTo(map));
+      routeLayers.push(L.circleMarker([goal.lat, goal.lon], { color: '#c084fc', fillColor: '#000', fillOpacity: 1, radius: 6, weight: 3 }).addTo(map));
+
+      map.fitBounds(latlngs, { padding: [80, 80], maxZoom: 18 });
+    };
   </script>
 </body>
+
 </html>

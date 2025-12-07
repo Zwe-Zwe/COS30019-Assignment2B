@@ -16,7 +16,7 @@ from torchvision import datasets, transforms, models
 from sklearn.metrics import classification_report, confusion_matrix
 
 from training_logger import RunLogger
-from training_config import CONFIG
+from training_config import get_config
 
 def default_workers() -> int:
     try:
@@ -169,34 +169,55 @@ def main() -> None:
         description="Transfer learning using pretrained ResNet18"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
-    parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
-    parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
-    parser.add_argument("--lr", type=float, default=CONFIG.learning_rate)
-    parser.add_argument("--weight_decay", type=float, default=CONFIG.weight_decay)
+    parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--batch_size", type=int, default=None)
+    parser.add_argument("--lr", type=float, default=None)
+    parser.add_argument("--weight_decay", type=float, default=None)
     parser.add_argument("--num_workers", type=int, default=default_workers())
     parser.add_argument("--prefetch_factor", type=int, default=2,
                         help="Prefetch factor for each worker (only if num_workers > 0)")
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
     parser.add_argument("--freeze-backbone", action="store_true",
                         help="Freeze backbone weights (default: False, i.e., unfreeze)")
-    parser.add_argument("--strong_aug", action="store_true",
+    parser.add_argument("--strong_aug", action="store_true", default=None,
                         help="Enable stronger data augmentation")
     parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
                         help="Disable stronger augmentation")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
-                        default=CONFIG.scheduler)
-    parser.add_argument("--step_size", type=int, default=CONFIG.step_size)
-    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma)
+                        default=None)
+    parser.add_argument("--step_size", type=int, default=None)
+    parser.add_argument("--step_gamma", type=float, default=None)
     parser.add_argument("--early_stop_patience", type=int,
-                        default=CONFIG.early_stop_patience)
+                        default=None)
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
     parser.add_argument("--model", choices=["resnet18", "mobilenet_v3_small"],
                         default="resnet18", help="Backbone to use (mobilenet is faster/lighter)")
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True,
                         help="Enable mixed precision training for speed/VRAM savings")
-    parser.set_defaults(strong_aug=CONFIG.strong_augmentation)
     args = parser.parse_args()
+
+    cfg = get_config(args.model)
+    if args.epochs is None:
+        args.epochs = cfg.epochs
+    if args.batch_size is None:
+        args.batch_size = cfg.batch_size
+    if args.lr is None:
+        args.lr = cfg.learning_rate
+    if args.weight_decay is None:
+        args.weight_decay = cfg.weight_decay
+    if args.scheduler is None:
+        args.scheduler = cfg.scheduler
+    if args.step_size is None:
+        args.step_size = cfg.step_size
+    if args.step_gamma is None:
+        args.step_gamma = cfg.step_gamma
+    if args.early_stop_patience is None:
+        args.early_stop_patience = cfg.early_stop_patience
+    if args.strong_aug is None:
+        args.strong_aug = cfg.strong_augmentation
+    # img_size tied to cfg
+    img_size = cfg.img_size
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
@@ -279,6 +300,8 @@ def main() -> None:
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "lr": args.lr,
+        "weight_decay": args.weight_decay,
+        "scheduler": args.scheduler,
         "notes": (
             f"model={args.model}; unfreeze={not args.freeze_backbone}; scheduler={args.scheduler}; "
             f"strong_aug={args.strong_aug}; wd={args.weight_decay}; "

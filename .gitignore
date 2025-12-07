@@ -12,15 +12,11 @@ env/
 venv/
 
 # Data / models / logs
-models/
-training_logs/
-charts/
 *.pth
 *.pkl
 
 # Cached datasets or large assets
-data3a/
-map.osm
+
 
 # Editor / OS files
 .DS_Store

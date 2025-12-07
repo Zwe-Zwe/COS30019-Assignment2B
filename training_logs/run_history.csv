@@ -1,0 +1,6 @@
+timestamp,model,best_epoch,best_acc,best_loss,epochs,batch_size,lr,weight_decay,scheduler,notes
+20251207-215923,transfer_resnet18,1,64.11,1.0428,40,32,0.0005,0.0005,cosine,model=resnet18; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7; amp=True; workers=8; prefetch=2
+20251207-220008,transfer_mobilenet_v3_small,4,72.18,0.6669,35,40,0.0007,0.0005,cosine,model=mobilenet_v3_small; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=6; amp=True; workers=8; prefetch=2
+20251207-220615,transfer_resnet18,1,68.15,0.7713,40,32,0.0005,0.0005,cosine,model=resnet18; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7; amp=True; workers=8; prefetch=2
+20251207-220653,transfer_mobilenet_v3_small,1,71.77,0.6631,35,40,0.0007,0.0005,cosine,model=mobilenet_v3_small; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=6; amp=True; workers=8; prefetch=2
+20251207-220824,transfer_efficientnet_b0,1,73.79,0.5925,45,32,0.0003,0.0005,cosine,unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7

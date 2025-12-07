@@ -15,7 +15,7 @@ from torchvision import datasets, transforms, models
 from sklearn.metrics import classification_report, confusion_matrix
 
 from training_logger import RunLogger
-from training_config import CONFIG
+from training_config import get_config
 
 
 def build_model(num_classes: int, freeze_backbone: bool = False) -> nn.Module:
@@ -33,17 +33,18 @@ def create_dataloaders(
     batch_size: int,
     num_workers: int,
     strong_aug: bool,
+    img_size: int,
 ) -> Tuple[DataLoader, DataLoader, list[str]]:
-    weights = models.EfficientNet_B0_Weights.DEFAULT
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    size = img_size
     try:
+        weights = models.EfficientNet_B0_Weights.DEFAULT
         normalize = transforms.Normalize(mean=weights.meta["mean"],
                                          std=weights.meta["std"])
-        size = weights.meta.get("min_size", CONFIG.img_size)
-    except (KeyError, AttributeError):
-        # Fallback for older torchvision builds without meta
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
-        size = CONFIG.img_size
+        size = weights.meta.get("min_size", img_size)
+    except Exception:
+        pass
 
     train_tfms_list = [
         transforms.Resize((size, size)),
@@ -130,32 +131,51 @@ def main() -> None:
         description="Transfer learning using EfficientNet-B0"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
-    parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
-    parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
-    parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--weight_decay", type=float, default=5e-4)
+    parser.add_argument("--epochs", type=int, default=None)
+    parser.add_argument("--batch_size", type=int, default=None)
+    parser.add_argument("--lr", type=float, default=None)
+    parser.add_argument("--weight_decay", type=float, default=None)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
     parser.add_argument("--freeze-backbone", action="store_true",
                         help="Freeze EfficientNet features")
-    parser.add_argument("--strong_aug", action="store_true",
+    parser.add_argument("--strong_aug", action="store_true", default=None,
                         help="Enable stronger augmentation")
     parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
                         help="Disable stronger augmentation")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
-                        default="cosine")
-    parser.add_argument("--step_size", type=int, default=5)
-    parser.add_argument("--step_gamma", type=float, default=0.5)
-    parser.add_argument("--early_stop_patience", type=int, default=7)
+                        default=None)
+    parser.add_argument("--step_size", type=int, default=None)
+    parser.add_argument("--step_gamma", type=float, default=None)
+    parser.add_argument("--early_stop_patience", type=int, default=None)
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
-    parser.set_defaults(strong_aug=True)
     args = parser.parse_args()
+
+    cfg = get_config("efficientnet_b0")
+    if args.epochs is None:
+        args.epochs = cfg.epochs
+    if args.batch_size is None:
+        args.batch_size = cfg.batch_size
+    if args.lr is None:
+        args.lr = cfg.learning_rate
+    if args.weight_decay is None:
+        args.weight_decay = cfg.weight_decay
+    if args.scheduler is None:
+        args.scheduler = cfg.scheduler
+    if args.step_size is None:
+        args.step_size = cfg.step_size
+    if args.step_gamma is None:
+        args.step_gamma = cfg.step_gamma
+    if args.early_stop_patience is None:
+        args.early_stop_patience = cfg.early_stop_patience
+    if args.strong_aug is None:
+        args.strong_aug = cfg.strong_augmentation
 
     logger = RunLogger("transfer_efficientnet_b0", args.log_dir)
 
     train_loader, val_loader, class_names = create_dataloaders(
-        args.data_root, args.batch_size, args.num_workers, args.strong_aug
+        args.data_root, args.batch_size, args.num_workers, args.strong_aug, cfg.img_size
     )
     model = build_model(len(class_names), freeze_backbone=args.freeze_backbone)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -225,6 +245,8 @@ def main() -> None:
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "lr": args.lr,
+        "weight_decay": args.weight_decay,
+        "scheduler": args.scheduler,
         "notes": (
             f"unfreeze={not args.freeze_backbone}; scheduler={args.scheduler}; "
             f"strong_aug={args.strong_aug}; wd={args.weight_decay}; "

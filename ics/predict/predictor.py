@@ -1,11 +1,10 @@
 """
 Incident severity prediction service.
 
-This module centralises model loading and inference for all four trained models:
- - baseline_cnn (custom lightweight CNN)
- - transfer_resnet18 (fine-tuned ResNet18 head)
- - resnet_gbt (ResNet feature extractor + HistGradientBoostingClassifier)
- - hog_svm (HOG descriptors + SVM)
+This module centralises model loading and inference for the supported models:
+ - transfer_efficientnet_b0
+ - transfer_resnet18
+ - transfer_mobilenet_v3_small
 """
 from __future__ import annotations
 
@@ -13,21 +12,12 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
-
-import joblib
 import numpy as np
 from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms, models
-from sklearn.ensemble import HistGradientBoostingClassifier  # noqa: F401
-from sklearn.pipeline import Pipeline  # noqa: F401
-
-try:
-    from skimage.feature import hog
-except ImportError:  # pragma: no cover - optional dependency
-    hog = None  # type: ignore
 
 
 ################################################################################
@@ -41,49 +31,6 @@ class PredictionResult:
     class_name: str
     probabilities: Dict[str, float]
     multiplier: float
-
-
-################################################################################
-# Simple CNN definition (must match training architecture)
-################################################################################
-
-
-class SimpleCNN(nn.Module):
-    def __init__(self, num_classes: int) -> None:
-        super().__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-        )
-        self.classifier = nn.Sequential(
-            nn.Dropout(0.4),
-            nn.Linear(128 * 16 * 16, 256),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_classes),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-        x = torch.flatten(x, 1)
-        return self.classifier(x)
-
-
-################################################################################
-# Predictor implementation
-################################################################################
 
 
 DEFAULT_MULTIPLIERS = {
@@ -113,23 +60,6 @@ class IncidentPredictor:
         loader(model_path)
 
     # ------------------------------------------------------------------ loaders
-    def _load_baseline_cnn(self, model_path: Optional[Path]) -> None:
-        if model_path is None:
-            model_path = Path("models/baseline_cnn.pth")
-        checkpoint = torch.load(model_path, map_location=self.device)
-        class_names = checkpoint["class_names"]
-        self.class_names = class_names
-        self.model = SimpleCNN(num_classes=len(class_names)).to(self.device)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.model.eval()
-        self.transform = transforms.Compose([
-            transforms.Resize((128, 128)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-        self.model_type = "torch"
-
     def _load_transfer_resnet18(self, model_path: Optional[Path]) -> None:
         if model_path is None:
             model_path = Path("models/transfer_resnet18.pth")
@@ -142,6 +72,26 @@ class IncidentPredictor:
             nn.Dropout(0.4),
             nn.Linear(in_features, len(class_names)),
         )
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.model.to(self.device)
+        self.model.eval()
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225]),
+        ])
+        self.model_type = "torch"
+
+    def _load_transfer_mobilenet_v3_small(self, model_path: Optional[Path]) -> None:
+        if model_path is None:
+            model_path = Path("models/transfer_mobilenet_v3_small.pth")
+        checkpoint = torch.load(model_path, map_location=self.device)
+        class_names = checkpoint["class_names"]
+        self.class_names = class_names
+        self.model = models.mobilenet_v3_small(weights=None)
+        in_features = self.model.classifier[-1].in_features
+        self.model.classifier[-1] = nn.Linear(in_features, len(class_names))
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.model.to(self.device)
         self.model.eval()
@@ -181,86 +131,6 @@ class IncidentPredictor:
         ])
         self.model_type = "torch"
 
-    def _load_transfer_resnet50(self, model_path: Optional[Path]) -> None:
-        if model_path is None:
-            model_path = Path("models/transfer_resnet50.pth")
-        checkpoint = torch.load(model_path, map_location=self.device)
-        class_names = checkpoint["class_names"]
-        self.class_names = class_names
-        self.model = models.resnet50(weights=None)
-        in_features = self.model.fc.in_features
-        self.model.fc = nn.Sequential(
-            nn.Dropout(0.4),
-            nn.Linear(in_features, len(class_names)),
-        )
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.model.to(self.device)
-        self.model.eval()
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-        self.model_type = "torch"
-
-    def _load_transfer_vit(self, model_path: Optional[Path]) -> None:
-        if model_path is None:
-            model_path = Path("models/transfer_vit.pth")
-        checkpoint = torch.load(model_path, map_location=self.device)
-        class_names = checkpoint["class_names"]
-        self.class_names = class_names
-        self.model = models.vit_b_16(weights=None)
-        in_features = self.model.heads.head.in_features
-        self.model.heads = nn.Sequential(
-            nn.Dropout(0.1),
-            nn.Linear(in_features, len(class_names)),
-        )
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.model.to(self.device)
-        self.model.eval()
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-        self.model_type = "torch"
-
-    def _load_resnet_gbt(self, model_path: Optional[Path]) -> None:
-        if model_path is None:
-            model_path = Path("models/resnet_gbt.pkl")
-        payload = joblib.load(model_path)
-        self.gbt_model = payload["model"]
-        self.class_names = payload["class_names"]
-        self.feature_extractor = nn.Sequential(
-            *list(models.resnet18(weights=models.ResNet18_Weights.DEFAULT).children())[:-1]
-        ).to(self.device)
-        self.feature_extractor.eval()
-        self.transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-        self.model_type = "sklearn_resnet"
-
-    def _load_hog_svm(self, model_path: Optional[Path]) -> None:
-        if hog is None:
-            raise RuntimeError("scikit-image is required for HOG+SVM predictor")
-        if model_path is None:
-            model_path = Path("models/hog_svm.pkl")
-        payload = joblib.load(model_path)
-        self.hog_model: Pipeline = payload["model"]
-        self.class_names = payload["class_names"]
-        params = payload["hog_params"]
-        self.hog_params = params
-        self.transform = transforms.Compose([
-            transforms.Resize((params["image_size"], params["image_size"])),
-            transforms.Grayscale(),
-        ])
-        self.model_type = "sklearn_hog"
-
     # ---------------------------------------------------------------- inference
     def _prepare_image(self, image: Image.Image | Path | str) -> Image.Image:
         if isinstance(image, (str, Path)):
@@ -272,37 +142,10 @@ class IncidentPredictor:
     def predict(self, image: Image.Image | Path | str) -> PredictionResult:
         image = self._prepare_image(image)
 
-        if self.model_type == "torch":
-            tensor = self.transform(image).unsqueeze(0).to(self.device)
-            with torch.no_grad():
-                logits = self.model(tensor)
-                probs = F.softmax(logits, dim=1).cpu().numpy()[0]
-        elif self.model_type == "sklearn_resnet":
-            tensor = self.transform(image).unsqueeze(0).to(self.device)
-            with torch.no_grad():
-                feats = self.feature_extractor(tensor).view(1, -1).cpu().numpy()
-            probs = self.gbt_model.predict_proba(feats)[0]
-        elif self.model_type == "sklearn_hog":
-            # transforms pipeline returns grayscale PIL; convert to numpy
-            proc = self.transform(image)
-            img_np = np.array(proc)  # shape (H, W)
-            params = self.hog_params
-            descriptor = hog(
-                img_np,
-                orientations=params["orientations"],
-                pixels_per_cell=(params["pixels_per_cell"], params["pixels_per_cell"]),
-                cells_per_block=(params["cells_per_block"], params["cells_per_block"]),
-                block_norm="L2-Hys",
-                feature_vector=True,
-            )
-            if hasattr(self.hog_model, "predict_proba"):
-                probs = self.hog_model.predict_proba([descriptor])[0]
-            else:  # pragma: no cover - fallback for legacy models
-                scores = self.hog_model.decision_function([descriptor])[0]
-                exp = np.exp(scores - np.max(scores))
-                probs = exp / exp.sum()
-        else:  # pragma: no cover
-            raise RuntimeError(f"Unknown model_type {self.model_type}")
+        tensor = self.transform(image).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            logits = self.model(tensor)
+            probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
         class_id = int(np.argmax(probs))
         class_name = self.class_names[class_id]
@@ -327,8 +170,7 @@ class IncidentPredictor:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run incident severity predictions")
     parser.add_argument("--model", choices=[
-        "baseline_cnn", "transfer_resnet18", "transfer_efficientnet_b0",
-        "transfer_resnet50", "transfer_vit", "resnet_gbt", "hog_svm"
+        "transfer_resnet18", "transfer_efficientnet_b0", "transfer_mobilenet_v3_small"
     ], default="transfer_resnet18")
     parser.add_argument("--model_path", type=Path)
     parser.add_argument("--images", type=Path, nargs="+", required=True,
