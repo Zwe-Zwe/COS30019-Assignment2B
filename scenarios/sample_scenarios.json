@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Masjid to Plaza with moderate slowdown",
+    "start": "1",
+    "goal": "3",
+    "k": 3,
+    "algorithm": "astar",
+    "incidents": [
+      {"way_id": "2003", "severity": "02-moderate"}
+    ]
+  },
+  {
+    "name": "Padang to Art Museum with severe accident",
+    "start": "2",
+    "goal": "12",
+    "k": 2,
+    "algorithm": "astar",
+    "incidents": [
+      {"way_id": "2014", "severity": "03-severe"}
+    ]
+  },
+  {
+    "name": "Wisma Hopoh detour to Museum Admin",
+    "start": "14",
+    "goal": "9",
+    "k": 4,
+    "algorithm": "astar",
+    "incidents": [
+      {"way_id": "2026", "severity": "02-moderate"}
+    ]
+  }
+]

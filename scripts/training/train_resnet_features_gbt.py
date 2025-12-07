@@ -1,6 +1,11 @@
 import argparse
+import sys
 from pathlib import Path
 from typing import Tuple
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import joblib
 import numpy as np
@@ -83,9 +88,9 @@ def main() -> None:
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
     parser.add_argument("--batch_size", type=int, default=CONFIG.feature_batch_size)
     parser.add_argument("--num_workers", type=int, default=2)
-    parser.add_argument("--max_depth", type=int, default=3)
-    parser.add_argument("--learning_rate", type=float, default=0.05)
-    parser.add_argument("--max_iter", type=int, default=200)
+    parser.add_argument("--max_depth", type=int, default=6)
+    parser.add_argument("--learning_rate", type=float, default=0.03)
+    parser.add_argument("--max_iter", type=int, default=500)
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"))
     args = parser.parse_args()

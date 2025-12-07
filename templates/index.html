@@ -1,212 +1,236 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Incident Classification System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        #route-map {
-            height: 420px;
-            border: 1px solid #ccc;
-            border-radius: 0.5rem;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kuching ICS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.14), transparent 28%),
+                  radial-gradient(circle at 80% 0%, rgba(249, 115, 22, 0.12), transparent 23%),
+                  #0b1120;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    #route-map { height: 420px; border-radius: 14px; overflow: hidden; }
+  </style>
 </head>
-<body class="bg-light">
-<div class="container py-4">
-    <h1 class="mb-3">Kuching Incident Classification System</h1>
-    <p class="text-muted">Select landmarks, upload an incident image (or choose severity manually), and view updated routes.</p>
+<body class="px-4 py-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <header class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-2">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p class="text-sm text-cyan-300 uppercase tracking-wider font-semibold">COS30019 · Incident Classification System</p>
+          <h1 class="text-3xl font-bold text-white">Kuching Intelligent Routing</h1>
+          <p class="text-slate-400 text-sm">Predict incidents, pick algorithms, and visualize top-k routes with live travel-time adjustments.</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-200 text-sm font-semibold">ML Prediction</span>
+          <span class="px-3 py-1 rounded-full bg-orange-500/10 text-orange-200 text-sm font-semibold">Adaptive Routing</span>
+        </div>
+      </div>
+    </header>
+
+    <form method="post" enctype="multipart/form-data" class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl">
+      <div class="grid md:grid-cols-2 gap-4 p-5">
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Origin</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="start">
+            {% for node in nodes %}<option value="{{ node.id }}" {% if node.id == selected_start %}selected{% endif %}>{{ node.id }} - {{ node.label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Destination</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="goal">
+            {% for node in nodes %}<option value="{{ node.id }}" {% if node.id == selected_goal %}selected{% endif %}>{{ node.id }} - {{ node.label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Incident image (optional)</label>
+          <input type="file" name="incident_image" accept="image/*" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white">
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Affected road segment</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="incident_way">
+            <option value="">-- None --</option>
+            {% for way in ways %}<option value="{{ way.id }}" {% if way.id == selected_way %}selected{% endif %}>{{ way.label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Search algorithm</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="algorithm">
+            {% for key, info in algorithm_choices.items() %}<option value="{{ key }}" {% if key == selected_algorithm %}selected{% endif %}>{{ info[0] }}</option>{% endfor %}
+          </select>
+          <p class="text-xs text-slate-500 mt-1">When requesting multiple routes, a time-aware K-shortest routine is used.</p>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Number of routes (k)</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="k_routes">
+            {% for i in range(1, max_routes + 1) %}<option value="{{ i }}" {% if i == k_routes %}selected{% endif %}>{{ i }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Prediction model</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="model">
+            {% for key, label in model_choices.items() %}<option value="{{ key }}" {% if key == selected_model %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-slate-400 font-semibold">Manual severity (fallback)</label>
+          <select class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100" name="manual_severity">
+            <option value="">-- auto from image --</option>
+            {% for sev in severity_options %}<option value="{{ sev }}" {% if sev == manual_severity %}selected{% endif %}>{{ sev }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end p-5 border-t border-slate-800">
+        <button class="px-4 py-2 rounded-lg bg-cyan-500 text-slate-900 font-semibold hover:bg-cyan-400 transition">Compute Routes</button>
+      </div>
+    </form>
 
     {% if errors %}
-    <div class="alert alert-danger">
-        <ul class="mb-0">
-            {% for err in errors %}
-            <li>{{ err }}</li>
-            {% endfor %}
-        </ul>
+    <div class="bg-red-500/15 border border-red-500/40 text-red-100 px-4 py-3 rounded-xl">
+      <ul class="list-disc list-inside space-y-1">{% for err in errors %}<li>{{ err }}</li>{% endfor %}</ul>
     </div>
     {% endif %}
 
-    <form method="post" enctype="multipart/form-data" class="card mb-4 shadow-sm">
-        <div class="card-body row g-3">
-            <div class="col-md-6">
-                <label class="form-label">Origin</label>
-                <select class="form-select" name="start">
-                    {% for node in nodes %}
-                    <option value="{{ node.id }}" {% if node.id == selected_start %}selected{% endif %}>
-                        {{ node.id }} - {{ node.label }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Destination</label>
-                <select class="form-select" name="goal">
-                    {% for node in nodes %}
-                    <option value="{{ node.id }}" {% if node.id == selected_goal %}selected{% endif %}>
-                        {{ node.id }} - {{ node.label }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Incident image (optional)</label>
-                <input type="file" name="incident_image" class="form-control" accept="image/*">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Affected road segment</label>
-                <select class="form-select" name="incident_way">
-                    <option value="">-- None --</option>
-                    {% for way in ways %}
-                    <option value="{{ way.id }}" {% if way.id == selected_way %}selected{% endif %}>
-                        {{ way.label }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Search algorithm</label>
-                <select class="form-select" name="algorithm">
-                    {% for key, info in algorithm_choices.items() %}
-                    <option value="{{ key }}" {% if key == selected_algorithm %}selected{% endif %}>
-                        {{ info[0] }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Manual severity (fallback)</label>
-                <select class="form-select" name="manual_severity">
-                    <option value="">-- auto from image --</option>
-                    {% for sev in severity_options %}
-                    <option value="{{ sev }}" {% if sev == manual_severity %}selected{% endif %}>
-                        {{ sev }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">Used when no image is provided.</div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Number of routes</label>
-                <input type="number" name="num_routes" class="form-control" min="1" max="5" value="{{ selected_k }}">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button class="btn btn-primary w-100" type="submit">Compute Routes</button>
-            </div>
-        </div>
-    </form>
-
     {% if prediction %}
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header">Incident prediction</div>
-        <div class="card-body">
-            <p class="mb-1"><strong>Severity:</strong> {{ prediction.class_name }}</p>
-            <p class="mb-1"><strong>Multiplier:</strong> ×{{ prediction.multiplier }}</p>
-            <p class="mb-2 text-muted">Probabilities:</p>
-            <ul class="mb-0">
-                {% for cls, prob in prediction.probabilities.items() %}
-                <li>{{ cls }} → {{ "%.2f"|format(prob * 100) }}%</li>
-                {% endfor %}
-            </ul>
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="text-cyan-300 font-semibold">Incident prediction</div>
+      </div>
+      <div class="p-5 grid md:grid-cols-2 gap-4">
+        <div>
+          <p class="mb-1"><span class="text-slate-400">Severity:</span> <span class="font-semibold text-white">{{ prediction.class_name }}</span></p>
+          <p class="mb-1"><span class="text-slate-400">Multiplier:</span> ×{{ prediction.multiplier }}</p>
         </div>
+        <div>
+          <p class="text-slate-400 mb-1">Probabilities</p>
+          <ul class="text-sm space-y-1">
+            {% for cls, prob in prediction.probabilities.items() %}
+            <li class="flex justify-between"><span>{{ cls }}</span><span>{{ "%.2f"|format(prob * 100) }}%</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
     {% endif %}
 
     {% if route_geometries %}
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header">Map view</div>
-        <div class="card-body">
-            <div id="route-map"></div>
-        </div>
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="text-cyan-300 font-semibold">Map view</div>
+      </div>
+      <div class="p-4">
+        <div id="route-map"></div>
+      </div>
     </div>
     {% endif %}
 
     {% if routes %}
-    <h2>Top {{ routes|length }} route(s)</h2>
-    {% for route in routes %}
-    <div class="card mb-3 shadow-sm">
-        <div class="card-header d-flex justify-content-between">
-            <span>{{ route.label }}</span>
-            <span class="fw-semibold">{{ "%.2f"|format(route.cost) }} minutes</span>
+    <div class="space-y-3">
+      {% for route in routes %}
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-lg">
+        <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 text-sm font-semibold">{{ route.label }}</span>
+            <span class="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-200 text-sm font-semibold">{{ algorithm_choices[route.algorithm][0] }}</span>
+          </div>
+          <div class="text-cyan-200 font-semibold">{{ "%.2f"|format(route.cost) }} min</div>
         </div>
-        <div class="card-body">
-            <p class="mb-2"><strong>Node sequence:</strong> {{ route.nodes | join(" → ") }}</p>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                            <th>From</th>
-                            <th>To</th>
-                            <th>Road</th>
-                            <th>Way ID</th>
-                            <th>Camera?</th>
-                            <th>Time (min)</th>
-                            <th>Multiplier</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for edge in route.edges %}
-                        <tr>
-                            <td>{{ edge.from_node }}</td>
-                            <td>{{ edge.to }}</td>
-                            <td>{{ edge.name }}</td>
-                            <td>{{ edge.way_id }}</td>
-                            <td>{% if edge.is_camera %}Yes{% else %}No{% endif %}</td>
-                            <td>{{ "%.2f"|format(edge.applied_time) }}</td>
-                            <td>{{ "%.2f"|format(edge.multiplier) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="p-5 space-y-3">
+          <p class="text-sm text-slate-400"><span class="text-slate-300 font-semibold">Node sequence:</span> {{ route.nodes | join(" → ") }}</p>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="text-slate-300 bg-slate-800/80">
+                <tr>
+                  <th class="px-3 py-2 text-left">From</th>
+                  <th class="px-3 py-2 text-left">To</th>
+                  <th class="px-3 py-2 text-left">Road</th>
+                  <th class="px-3 py-2 text-left">Way ID</th>
+                  <th class="px-3 py-2 text-left">Camera?</th>
+                  <th class="px-3 py-2 text-left">Time (min)</th>
+                  <th class="px-3 py-2 text-left">Multiplier</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                {% for edge in route.edges %}
+                <tr>
+                  <td class="px-3 py-2">{{ edge.from_node }}</td>
+                  <td class="px-3 py-2">{{ edge.to }}</td>
+                  <td class="px-3 py-2">{{ edge.name }}</td>
+                  <td class="px-3 py-2">{{ edge.way_id }}</td>
+                  <td class="px-3 py-2">
+                    {% if edge.is_camera %}<span class="px-2 py-1 rounded bg-red-500/20 text-red-200 text-xs font-semibold">Yes</span>
+                    {% else %}<span class="px-2 py-1 rounded bg-slate-700 text-slate-200 text-xs font-semibold">No</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-3 py-2">{{ "%.2f"|format(edge.applied_time) }}</td>
+                  <td class="px-3 py-2">{{ "%.2f"|format(edge.multiplier) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
     {% elif routes is not none %}
-    <div class="alert alert-warning">No routes found for the chosen inputs.</div>
+    <div class="bg-amber-500/10 border border-amber-500/40 text-amber-100 px-4 py-3 rounded-xl">No routes found for the chosen inputs.</div>
     {% endif %}
-</div>
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
     const routeGeoms = {{ route_geometries|tojson }};
     const mapCenter = {{ map_center|tojson }};
     const startMarker = {{ start_coords|tojson }};
     const goalMarker = {{ goal_coords|tojson }};
+    const incidentGeom = {{ incident_geometry|tojson }};
 
     if (routeGeoms.length > 0 && document.getElementById('route-map')) {
-        const map = L.map('route-map').setView([mapCenter.lat, mapCenter.lon], 15);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+      const map = L.map('route-map').setView([mapCenter.lat, mapCenter.lon], 15);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
 
-        const bounds = [];
-
-        routeGeoms.forEach((route, idx) => {
-            const latlngs = route.coords.map(c => {
-                bounds.push([c.lat, c.lon]);
-                return [c.lat, c.lon];
-            });
-            L.polyline(latlngs, {
-                color: route.color,
-                weight: 5,
-                opacity: 0.8
-            }).addTo(map).bindPopup(`${route.label}<br>Total time: ${route.cost.toFixed(2)} min`);
+      const bounds = [];
+      routeGeoms.forEach((route) => {
+        const latlngs = route.coords.map(c => {
+          bounds.push([c.lat, c.lon]);
+          return [c.lat, c.lon];
         });
+        L.polyline(latlngs, {
+          color: route.color,
+          weight: 5,
+          opacity: 0.9
+        }).addTo(map).bindPopup(`${route.label}<br>Total time: ${route.cost.toFixed(2)} min`);
+      });
 
-        const startPopup = `${startMarker.id}: ${startMarker.label}`;
-        const goalPopup = `${goalMarker.id}: ${goalMarker.label}`;
-        L.circleMarker([startMarker.lat, startMarker.lon], {color: '#16a34a', radius: 6})
-            .addTo(map).bindPopup(`Start<br>${startPopup}`);
-        L.circleMarker([goalMarker.lat, goalMarker.lon], {color: '#dc2626', radius: 6})
-            .addTo(map).bindPopup(`Goal<br>${goalPopup}`);
+      if (incidentGeom) {
+        const line = L.polyline([
+          [incidentGeom.from.lat, incidentGeom.from.lon],
+          [incidentGeom.to.lat, incidentGeom.to.lon],
+        ], { color: '#ef4444', weight: 6, opacity: 0.85, dashArray: '6 8' }).addTo(map);
+        line.bindPopup(`Incident on ${incidentGeom.road_name} (Way ${incidentGeom.way_id})<br>Severity: ${incidentGeom.severity || 'n/a'}`);
+        bounds.push([incidentGeom.from.lat, incidentGeom.from.lon]);
+        bounds.push([incidentGeom.to.lat, incidentGeom.to.lon]);
+      }
 
-        if (bounds.length > 0) {
-            map.fitBounds(bounds, {padding: [20, 20]});
-        }
+      L.circleMarker([startMarker.lat, startMarker.lon], {color: '#22d3ee', radius: 7})
+        .addTo(map).bindPopup(`Start<br>${startMarker.id}: ${startMarker.label}`);
+      L.circleMarker([goalMarker.lat, goalMarker.lon], {color: '#f97316', radius: 7})
+        .addTo(map).bindPopup(`Goal<br>${goalMarker.id}: ${goalMarker.label}`);
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, {padding: [20, 20]});
+      }
     }
-</script>
+  </script>
 </body>
 </html>

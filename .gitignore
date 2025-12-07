@@ -14,6 +14,7 @@ venv/
 # Data / models / logs
 models/
 training_logs/
+charts/
 *.pth
 *.pkl
 

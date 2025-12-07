@@ -1,6 +1,11 @@
 import argparse
+import sys
 from pathlib import Path
 from typing import Tuple
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import torch
 import torch.nn as nn
@@ -12,16 +17,14 @@ from sklearn.metrics import classification_report, confusion_matrix
 from training_logger import RunLogger
 from training_config import CONFIG
 
-def build_model(num_classes: int, freeze_backbone: bool = True) -> nn.Module:
-    model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+
+def build_model(num_classes: int, freeze_backbone: bool = False) -> nn.Module:
+    model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
     if freeze_backbone:
-        for param in model.parameters():
+        for param in model.features.parameters():
             param.requires_grad = False
-    in_features = model.fc.in_features
-    model.fc = nn.Sequential(
-        nn.Dropout(0.4),
-        nn.Linear(in_features, num_classes),
-    )
+    in_features = model.classifier[-1].in_features
+    model.classifier[-1] = nn.Linear(in_features, num_classes)
     return model
 
 
@@ -31,31 +34,32 @@ def create_dataloaders(
     num_workers: int,
     strong_aug: bool,
 ) -> Tuple[DataLoader, DataLoader, list[str]]:
-    weights = models.ResNet18_Weights.DEFAULT
+    weights = models.EfficientNet_B0_Weights.DEFAULT
     try:
         normalize = transforms.Normalize(mean=weights.meta["mean"],
                                          std=weights.meta["std"])
-        size = weights.meta["min_size"]
-    except KeyError:
-        # Older torchvision builds may not expose meta info; fallback defaults.
+        size = weights.meta.get("min_size", CONFIG.img_size)
+    except (KeyError, AttributeError):
+        # Fallback for older torchvision builds without meta
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
-        size = 224
+        size = CONFIG.img_size
 
     train_tfms_list = [
         transforms.Resize((size, size)),
-        transforms.RandomResizedCrop(size, scale=(0.8, 1.0)),
+        transforms.RandomResizedCrop(size, scale=(0.75, 1.0)),
         transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        transforms.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25),
     ]
     if strong_aug:
         train_tfms_list.append(transforms.RandomRotation(15))
-        train_tfms_list.append(transforms.RandomPerspective(distortion_scale=0.25, p=0.4))
+        train_tfms_list.append(transforms.RandomPerspective(distortion_scale=0.3, p=0.4))
     train_tfms_list.append(transforms.ToTensor())
     if strong_aug:
-        train_tfms_list.append(transforms.RandomErasing(p=0.25))
+        train_tfms_list.append(transforms.RandomErasing(p=0.3))
     train_tfms_list.append(normalize)
     train_tfms = transforms.Compose(train_tfms_list)
+
     val_tfms = transforms.Compose([
         transforms.Resize((size, size)),
         transforms.CenterCrop(size),
@@ -123,43 +127,42 @@ def evaluate(model, loader, criterion, device):
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Transfer learning using pretrained ResNet18"
+        description="Transfer learning using EfficientNet-B0"
     )
     parser.add_argument("--data_root", type=Path, default=Path("data3a"))
     parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
     parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
-    parser.add_argument("--lr", type=float, default=CONFIG.learning_rate)
-    parser.add_argument("--weight_decay", type=float, default=CONFIG.weight_decay)
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--output_dir", type=Path, default=Path("models"))
-    parser.add_argument("--unfreeze", action="store_true",
-                        help="Fine-tune entire network if set")
+    parser.add_argument("--freeze-backbone", action="store_true",
+                        help="Freeze EfficientNet features")
     parser.add_argument("--strong_aug", action="store_true",
-                        help="Enable stronger data augmentation")
+                        help="Enable stronger augmentation")
     parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
                         help="Disable stronger augmentation")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
-                        default=CONFIG.scheduler)
-    parser.add_argument("--step_size", type=int, default=CONFIG.step_size)
-    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma)
-    parser.add_argument("--early_stop_patience", type=int,
-                        default=CONFIG.early_stop_patience)
+                        default="cosine")
+    parser.add_argument("--step_size", type=int, default=5)
+    parser.add_argument("--step_gamma", type=float, default=0.5)
+    parser.add_argument("--early_stop_patience", type=int, default=7)
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
-    parser.set_defaults(strong_aug=CONFIG.strong_augmentation)
+    parser.set_defaults(strong_aug=True)
     args = parser.parse_args()
 
-    logger = RunLogger("transfer_resnet18", args.log_dir)
+    logger = RunLogger("transfer_efficientnet_b0", args.log_dir)
 
     train_loader, val_loader, class_names = create_dataloaders(
         args.data_root, args.batch_size, args.num_workers, args.strong_aug
     )
-    model = build_model(len(class_names), freeze_backbone=not args.unfreeze)
+    model = build_model(len(class_names), freeze_backbone=args.freeze_backbone)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    params = model.parameters() if args.unfreeze else model.fc.parameters()
-    optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
+    params = model.parameters() if not args.freeze_backbone else model.classifier.parameters()
+    optimizer = optim.AdamW(params, lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.CrossEntropyLoss()
     scheduler = None
     if args.scheduler == "cosine":
@@ -173,7 +176,7 @@ def main() -> None:
     best_epoch = 0
     epochs_no_improve = 0
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_path = args.output_dir / "transfer_resnet18.pth"
+    ckpt_path = args.output_dir / "transfer_efficientnet_b0.pth"
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
@@ -194,7 +197,7 @@ def main() -> None:
                 "optimizer_state_dict": optimizer.state_dict(),
                 "epoch": epoch,
                 "class_names": class_names,
-                "unfreeze": args.unfreeze,
+                "unfreeze": not args.freeze_backbone,
             }, ckpt_path)
             logger.log(f"[INFO] Saved new best model to {ckpt_path} (acc={best_acc*100:.2f}%)")
         else:
@@ -223,7 +226,7 @@ def main() -> None:
         "batch_size": args.batch_size,
         "lr": args.lr,
         "notes": (
-            f"unfreeze={args.unfreeze}; scheduler={args.scheduler}; "
+            f"unfreeze={not args.freeze_backbone}; scheduler={args.scheduler}; "
             f"strong_aug={args.strong_aug}; wd={args.weight_decay}; "
             f"early_stop={args.early_stop_patience}"
         ),

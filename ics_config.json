@@ -1,0 +1,12 @@
+{
+  "map_file": "heritage_assignment_15_time_asymmetric-1.txt",
+  "default_algorithm": "astar",
+  "default_model": "transfer_resnet18",
+  "max_routes": 5,
+  "default_k": 3,
+  "severity_multipliers": {
+    "01-minor": 1.2,
+    "02-moderate": 1.6,
+    "03-severe": 3.0
+  }
+}

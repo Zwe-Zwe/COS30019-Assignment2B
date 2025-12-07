@@ -3,7 +3,7 @@
 from collections import deque
 import heapq
 from math import inf
-from src.parser import Problem
+from ics.parser import Problem
 
 class Node:
     """
@@ -130,7 +130,7 @@ def dfs(problem, observer=None, stop_on_first_goal=True):
         
         # Reverse order for LIFO: push higher IDs first so lower IDs pop first
         # When tie on chronological, lower node_id wins
-        children.sort(key=lambda x: (-x[0], -x[1]))
+        children.sort(key=lambda x: (x[0], x[1]), reverse=True)
         frontier.extend(children)
 
         _notify(observer, algorithm="dfs", action="expand",
@@ -435,7 +435,7 @@ def cus1(problem, observer=None, stop_on_first_goal=True):
                         node_count += 1
                 
                 # Reverse for LIFO: higher fifo and node_id pushed first
-                children.sort(key=lambda x: (-x[0], -x[1]))
+                children.sort(key=lambda x: (x[0], x[1]), reverse=True)
                 stack.extend(children)
                 
                 _notify(

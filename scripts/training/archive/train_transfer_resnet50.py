@@ -1,78 +1,69 @@
 import argparse
-import os
+import sys
 from pathlib import Path
 from typing import Tuple
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, models
 from sklearn.metrics import classification_report, confusion_matrix
 
 from training_logger import RunLogger
 from training_config import CONFIG
 
-class SimpleCNN(nn.Module):
-    """Lightweight baseline CNN with adaptive pooling for arbitrary image size."""
-
-    def __init__(self, num_classes: int) -> None:
-        super().__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            nn.AdaptiveAvgPool2d((4, 4)),
-        )
-        self.classifier = nn.Sequential(
-            nn.Dropout(0.4),
-            nn.Linear(128 * 4 * 4, 256),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_classes),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        return self.classifier(x)
+def build_model(num_classes: int, freeze_backbone: bool = True) -> nn.Module:
+    model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+    if freeze_backbone:
+        for param in model.parameters():
+            param.requires_grad = False
+    in_features = model.fc.in_features
+    model.fc = nn.Sequential(
+        nn.Dropout(0.4),
+        nn.Linear(in_features, num_classes),
+    )
+    return model
 
 
 def create_dataloaders(
     data_root: Path,
     batch_size: int,
     num_workers: int,
-    img_size: int,
     strong_aug: bool,
 ) -> Tuple[DataLoader, DataLoader, list[str]]:
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    weights = models.ResNet50_Weights.DEFAULT
+    try:
+        normalize = transforms.Normalize(mean=weights.meta["mean"],
+                                         std=weights.meta["std"])
+        size = weights.meta["min_size"]
+    except KeyError:
+        # Older torchvision builds may not expose meta info; fallback defaults.
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        size = 224
+
     train_tfms_list = [
-        transforms.Resize((img_size, img_size)),
+        transforms.Resize((size, size)),
+        transforms.RandomResizedCrop(size, scale=(0.8, 1.0)),
         transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
     ]
     if strong_aug:
-        train_tfms_list.insert(1, transforms.RandomRotation(12))
-        train_tfms_list.insert(2, transforms.RandomPerspective(distortion_scale=0.2, p=0.3))
+        train_tfms_list.append(transforms.RandomRotation(15))
+        train_tfms_list.append(transforms.RandomPerspective(distortion_scale=0.25, p=0.4))
     train_tfms_list.append(transforms.ToTensor())
     if strong_aug:
         train_tfms_list.append(transforms.RandomErasing(p=0.25))
     train_tfms_list.append(normalize)
     train_tfms = transforms.Compose(train_tfms_list)
     val_tfms = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
+        transforms.Resize((size, size)),
+        transforms.CenterCrop(size),
         transforms.ToTensor(),
         normalize,
     ])
@@ -97,13 +88,7 @@ def create_dataloaders(
     return train_loader, val_loader, train_ds.classes
 
 
-def train_one_epoch(
-    model: nn.Module,
-    loader: DataLoader,
-    criterion: nn.Module,
-    optimizer: optim.Optimizer,
-    device: torch.device,
-) -> float:
+def train_one_epoch(model, loader, criterion, optimizer, device) -> float:
     model.train()
     total_loss = 0.0
     for images, labels in loader:
@@ -115,18 +100,12 @@ def train_one_epoch(
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-
         total_loss += loss.item() * images.size(0)
     return total_loss / len(loader.dataset)
 
 
 @torch.no_grad()
-def evaluate(
-    model: nn.Module,
-    loader: DataLoader,
-    criterion: nn.Module,
-    device: torch.device,
-) -> Tuple[float, float, list[int], list[int]]:
+def evaluate(model, loader, criterion, device):
     model.eval()
     total_loss = 0.0
     correct = 0
@@ -135,16 +114,13 @@ def evaluate(
     for images, labels in loader:
         images = images.to(device)
         labels = labels.to(device)
-
         outputs = model(images)
         loss = criterion(outputs, labels)
         total_loss += loss.item() * images.size(0)
-
         predicted = outputs.argmax(dim=1)
         correct += (predicted == labels).sum().item()
         preds.extend(predicted.cpu().tolist())
         targets.extend(labels.cpu().tolist())
-
     avg_loss = total_loss / len(loader.dataset)
     accuracy = correct / len(loader.dataset)
     return avg_loss, accuracy, preds, targets
@@ -152,47 +128,44 @@ def evaluate(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Train baseline CNN for traffic incident severity classification"
+        description="Transfer learning using pretrained ResNet50"
     )
-    parser.add_argument("--data_root", type=Path, default=Path("data3a"),
-                        help="Root directory containing training/ and validation/ subdirectories")
+    parser.add_argument("--data_root", type=Path, default=Path("data3a"))
     parser.add_argument("--epochs", type=int, default=CONFIG.epochs)
     parser.add_argument("--batch_size", type=int, default=CONFIG.batch_size)
     parser.add_argument("--lr", type=float, default=CONFIG.learning_rate)
     parser.add_argument("--weight_decay", type=float, default=CONFIG.weight_decay)
     parser.add_argument("--num_workers", type=int, default=2)
-    parser.add_argument("--img_size", type=int, default=CONFIG.img_size)
+    parser.add_argument("--output_dir", type=Path, default=Path("models"))
+    parser.add_argument("--freeze-backbone", action="store_true",
+                        help="Freeze backbone weights (default: False, i.e., unfreeze)")
     parser.add_argument("--strong_aug", action="store_true",
-                        help="Enable stronger spatial augmentations")
+                        help="Enable stronger data augmentation")
     parser.add_argument("--no-strong-aug", action="store_false", dest="strong_aug",
-                        help="Disable stronger spatial augmentations")
+                        help="Disable stronger augmentation")
     parser.add_argument("--scheduler", choices=["none", "cosine", "step"],
                         default=CONFIG.scheduler)
-    parser.add_argument("--step_size", type=int, default=CONFIG.step_size,
-                        help="Epoch interval for step scheduler")
-    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma,
-                        help="Decay factor for step scheduler")
+    parser.add_argument("--step_size", type=int, default=CONFIG.step_size)
+    parser.add_argument("--step_gamma", type=float, default=CONFIG.step_gamma)
     parser.add_argument("--early_stop_patience", type=int,
-                        default=CONFIG.early_stop_patience,
-                        help="Stop if no val improvement for N epochs (0=off)")
-    parser.add_argument("--output_dir", type=Path, default=Path("models"),
-                        help="Where to save the best model checkpoint")
+                        default=CONFIG.early_stop_patience)
     parser.add_argument("--log_dir", type=Path, default=Path("training_logs"),
                         help="Directory to store per-run logs and history")
     parser.set_defaults(strong_aug=CONFIG.strong_augmentation)
     args = parser.parse_args()
 
-    logger = RunLogger("baseline_cnn", args.log_dir)
+    logger = RunLogger("transfer_resnet50", args.log_dir)
 
     train_loader, val_loader, class_names = create_dataloaders(
-        args.data_root, args.batch_size, args.num_workers,
-        args.img_size, args.strong_aug
+        args.data_root, args.batch_size, args.num_workers, args.strong_aug
     )
-
+    model = build_model(len(class_names), freeze_backbone=args.freeze_backbone)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SimpleCNN(num_classes=len(class_names)).to(device)
+    model.to(device)
+
+    params = model.parameters() if not args.freeze_backbone else model.fc.parameters()
+    optimizer = optim.Adam(params, lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = None
     if args.scheduler == "cosine":
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
@@ -205,7 +178,7 @@ def main() -> None:
     best_epoch = 0
     epochs_no_improve = 0
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_path = args.output_dir / "baseline_cnn.pth"
+    ckpt_path = args.output_dir / "transfer_resnet50.pth"
 
     for epoch in range(1, args.epochs + 1):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
@@ -226,6 +199,7 @@ def main() -> None:
                 "optimizer_state_dict": optimizer.state_dict(),
                 "epoch": epoch,
                 "class_names": class_names,
+                "unfreeze": not args.freeze_backbone,
             }, ckpt_path)
             logger.log(f"[INFO] Saved new best model to {ckpt_path} (acc={best_acc*100:.2f}%)")
         else:
@@ -238,7 +212,6 @@ def main() -> None:
             logger.log(f"[INFO] Early stopping triggered at epoch {epoch}")
             break
 
-    # Final evaluation with metrics
     checkpoint = torch.load(ckpt_path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     val_loss, val_acc, preds, targets = evaluate(model, val_loader, criterion, device)
@@ -255,8 +228,9 @@ def main() -> None:
         "batch_size": args.batch_size,
         "lr": args.lr,
         "notes": (
-            f"scheduler={args.scheduler}; strong_aug={args.strong_aug}; "
-            f"wd={args.weight_decay}; early_stop={args.early_stop_patience}"
+            f"unfreeze={not args.freeze_backbone}; scheduler={args.scheduler}; "
+            f"strong_aug={args.strong_aug}; wd={args.weight_decay}; "
+            f"early_stop={args.early_stop_patience}"
         ),
     })
 
