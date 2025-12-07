@@ -1,0 +1,26 @@
+Epoch 01/45 - train_loss: 0.9023 - val_loss: 0.5925 - val_acc: 73.79%
+[INFO] Saved new best model to models/transfer_efficientnet_b0.pth (acc=73.79%)
+Epoch 02/45 - train_loss: 0.7237 - val_loss: 0.5870 - val_acc: 71.77%
+Epoch 03/45 - train_loss: 0.5877 - val_loss: 0.6244 - val_acc: 70.97%
+Epoch 04/45 - train_loss: 0.5202 - val_loss: 0.7716 - val_acc: 63.71%
+Epoch 05/45 - train_loss: 0.4502 - val_loss: 0.6267 - val_acc: 70.56%
+Epoch 06/45 - train_loss: 0.3817 - val_loss: 0.6412 - val_acc: 73.39%
+Epoch 07/45 - train_loss: 0.2821 - val_loss: 0.7333 - val_acc: 72.58%
+Epoch 08/45 - train_loss: 0.3181 - val_loss: 0.8317 - val_acc: 65.73%
+[INFO] Early stopping triggered at epoch 8
+[FINAL] Best checkpoint - val_loss: 0.5925, val_acc: 73.79%
+Confusion matrix:
+[[72 10  0]
+ [20 38 17]
+ [ 2 16 73]]
+Classification report:
+              precision    recall  f1-score   support
+
+    01-minor       0.77      0.88      0.82        82
+ 02-moderate       0.59      0.51      0.55        75
+   03-severe       0.81      0.80      0.81        91
+
+    accuracy                           0.74       248
+   macro avg       0.72      0.73      0.72       248
+weighted avg       0.73      0.74      0.73       248
+

@@ -1,0 +1,30 @@
+Epoch 01/35 - train_loss: 0.9170 - val_loss: 0.8165 - val_acc: 62.10%
+[INFO] Saved new best model to models/transfer_mobilenet_v3_small.pth (acc=62.10%)
+Epoch 02/35 - train_loss: 0.7295 - val_loss: 0.8092 - val_acc: 63.31%
+[INFO] Saved new best model to models/transfer_mobilenet_v3_small.pth (acc=63.31%)
+Epoch 03/35 - train_loss: 0.6396 - val_loss: 0.8965 - val_acc: 61.69%
+Epoch 04/35 - train_loss: 0.5573 - val_loss: 0.6669 - val_acc: 72.18%
+[INFO] Saved new best model to models/transfer_mobilenet_v3_small.pth (acc=72.18%)
+Epoch 05/35 - train_loss: 0.5345 - val_loss: 0.7705 - val_acc: 64.92%
+Epoch 06/35 - train_loss: 0.4661 - val_loss: 0.8799 - val_acc: 60.89%
+Epoch 07/35 - train_loss: 0.3596 - val_loss: 0.8863 - val_acc: 65.73%
+Epoch 08/35 - train_loss: 0.3283 - val_loss: 1.0113 - val_acc: 62.90%
+Epoch 09/35 - train_loss: 0.2908 - val_loss: 1.0014 - val_acc: 60.89%
+Epoch 10/35 - train_loss: 0.2470 - val_loss: 0.9477 - val_acc: 68.55%
+[INFO] Early stopping triggered at epoch 10
+[FINAL] Best checkpoint - val_loss: 0.6669, val_acc: 72.18%
+Confusion matrix:
+[[57 25  0]
+ [13 42 20]
+ [ 0 11 80]]
+Classification report:
+              precision    recall  f1-score   support
+
+    01-minor       0.81      0.70      0.75        82
+ 02-moderate       0.54      0.56      0.55        75
+   03-severe       0.80      0.88      0.84        91
+
+    accuracy                           0.72       248
+   macro avg       0.72      0.71      0.71       248
+weighted avg       0.73      0.72      0.72       248
+
