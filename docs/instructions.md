@@ -44,7 +44,7 @@ The User Interface is designed as a step-by-step "Wizard" to guide the user thro
 
 -   Step 3: Incident Detection (The AI Core)
     -   This is where the Machine Learning integration happens.
-    -   Option A (Automatic): Upload an image of a traffic accident. The system will use the active Deep Learning model (e.g., EfficientNet-B0) to classify the severity (Minor, Moderate, or Severe) and apply a time penalty to the road.
+    -   Option A (Automatic): Upload an image of a road. The system will use the active Deep Learning model (e.g., EfficientNet-B0) to classify the severity (None, Minor, Moderate, or Severe). If "None" is detected, no penalty is applied. Otherwise, a time penalty is added to the road segment.
     -   Option B (Manual): If no image is available, you can manually select a severity level to test the routing logic.
     ![Incident Configuration](../screenshots/step3_incident_configuration.png)
 

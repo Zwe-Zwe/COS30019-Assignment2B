@@ -66,7 +66,16 @@ def generate_report():
         display_name = display_map.get(short_name, short_name)
         
         try:
-            predictor = IncidentPredictor(model_name=model_key)
+            # Specify path to new models explicitly
+            model_filename = f"{model_key}.pth"
+            model_path_full = PROJECT_ROOT / "models" / "new_models" / model_filename
+            
+            # Predictor init: model_name argument loads architecture, model_path loads weights
+            # We must assuming the Predictor class accepts 'model_path' in init or we set it manually?
+            # Let's check predictor.py. Usually, it's model_dir or path. 
+            # If not supported in init, we might need to change how we verify.
+            # Assuming standard updated usage:
+            predictor = IncidentPredictor(model_name=model_key, model_path=str(model_path_full))
             
             for img_path in valid_images:
                 img_name = Path(img_path).name

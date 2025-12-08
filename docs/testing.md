@@ -13,17 +13,17 @@ Evaluation Strategy
 
 Results Summary
 1. EfficientNet-B0
-   - Validation Accuracy: 94.2 percent
+   - Validation Accuracy: 80.2 percent
    - Strength: Highest accuracy, best for handling edge cases like nighttime or rainy scenes.
    - Trade-off: Slightly slower inference time compared to MobileNet.
 
 2. MobileNet-V3-Small
-   - Validation Accuracy: 89.5 percent
+   - Validation Accuracy: 77.8 percent
    - Strength: Extremely fast inference (less than 15ms on CPU).
    - Use Case: Verified as the optimal choice for the "High Speed" mode in the application.
 
 3. ResNet18
-   - Validation Accuracy: 91.0 percent
+   - Validation Accuracy: 74.2 percent
    - Status: Used as a stable baseline for comparison.
 
 SECTION 2: SYSTEM INTEGRATION TESTING
@@ -43,6 +43,13 @@ Test Case 002: Minor Incident Avoidance
 - Action: System detects class "01-minor" and applies a 1.2x penalty to the edge.
 - Expected Result: The algorithm should either stick to the current path (if still optimal) or switch if the penalty makes it too expensive.
 - Actual Result: PASS. Cost updated correctly in the debug logs.
+
+Test Case 011: Non-Accident (Safe Road)
+- Goal: Verify '00-none' class handling.
+- Input: Upload an image of a clear road.
+- Action: System predicts '00-none' (No Accident).
+- Expected Result: Multiplier remains 1.0; no path change.
+- Actual Result: PASS. Verified with image 'data3a/training/00-none/1.jpg'.
 
 Test Case 003: Severe Obstacle Avoidance
 - Goal: Ensure safety by avoiding severe accidents.

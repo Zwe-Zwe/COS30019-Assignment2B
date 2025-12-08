@@ -1,0 +1,408 @@
+test_images/10.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.573
+    01-minor: 0.034
+    02-moderate: 0.298
+    03-severe: 0.096
+test_images/11.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.003
+    03-severe: 0.997
+test_images/12.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.001
+    02-moderate: 0.017
+    03-severe: 0.982
+test_images/13.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.886
+    02-moderate: 0.110
+    03-severe: 0.004
+test_images/14.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.005
+    02-moderate: 0.052
+    03-severe: 0.942
+test_images/15.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.839
+    02-moderate: 0.154
+    03-severe: 0.006
+test_images/16.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.082
+    01-minor: 0.294
+    02-moderate: 0.415
+    03-severe: 0.209
+test_images/17.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.004
+    02-moderate: 0.222
+    03-severe: 0.773
+test_images/18.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.736
+    02-moderate: 0.256
+    03-severe: 0.008
+test_images/19.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.021
+    01-minor: 0.060
+    02-moderate: 0.563
+    03-severe: 0.356
+test_images/1.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.003
+    02-moderate: 0.073
+    03-severe: 0.924
+test_images/20.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.845
+    01-minor: 0.002
+    02-moderate: 0.149
+    03-severe: 0.004
+test_images/21.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.014
+    03-severe: 0.985
+test_images/22.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.008
+    03-severe: 0.992
+test_images/23.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.813
+    02-moderate: 0.178
+    03-severe: 0.009
+test_images/24.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.002
+    01-minor: 0.024
+    02-moderate: 0.312
+    03-severe: 0.663
+test_images/25.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.004
+    01-minor: 0.293
+    02-moderate: 0.550
+    03-severe: 0.154
+test_images/26.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.002
+    02-moderate: 0.101
+    03-severe: 0.897
+test_images/27.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.001
+    02-moderate: 0.016
+    03-severe: 0.983
+test_images/28.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.008
+    03-severe: 0.992
+test_images/29.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.291
+    02-moderate: 0.619
+    03-severe: 0.089
+test_images/2.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.006
+    02-moderate: 0.150
+    03-severe: 0.843
+test_images/30.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.001
+    02-moderate: 0.024
+    03-severe: 0.975
+test_images/31.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.856
+    01-minor: 0.013
+    02-moderate: 0.107
+    03-severe: 0.023
+test_images/32.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.005
+    01-minor: 0.127
+    02-moderate: 0.282
+    03-severe: 0.586
+test_images/33.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.002
+    02-moderate: 0.035
+    03-severe: 0.962
+test_images/34.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.002
+    01-minor: 0.030
+    02-moderate: 0.199
+    03-severe: 0.770
+test_images/35.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.065
+    02-moderate: 0.854
+    03-severe: 0.082
+test_images/36.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.003
+    03-severe: 0.997
+test_images/37.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.793
+    02-moderate: 0.201
+    03-severe: 0.006
+test_images/38.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.012
+    01-minor: 0.205
+    02-moderate: 0.408
+    03-severe: 0.376
+test_images/39.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.037
+    01-minor: 0.005
+    02-moderate: 0.188
+    03-severe: 0.771
+test_images/3.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.070
+    01-minor: 0.237
+    02-moderate: 0.489
+    03-severe: 0.204
+test_images/40.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.886
+    02-moderate: 0.111
+    03-severe: 0.002
+test_images/41.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.003
+    01-minor: 0.792
+    02-moderate: 0.169
+    03-severe: 0.035
+test_images/42.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.004
+    01-minor: 0.338
+    02-moderate: 0.333
+    03-severe: 0.325
+test_images/43.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.007
+    01-minor: 0.042
+    02-moderate: 0.232
+    03-severe: 0.719
+test_images/44.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.004
+    01-minor: 0.317
+    02-moderate: 0.515
+    03-severe: 0.164
+test_images/45.jpg: class=01-minor (multiplier=1.2)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.541
+    02-moderate: 0.424
+    03-severe: 0.034
+test_images/46.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.057
+    01-minor: 0.020
+    02-moderate: 0.425
+    03-severe: 0.498
+test_images/47.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.003
+    01-minor: 0.312
+    02-moderate: 0.295
+    03-severe: 0.391
+test_images/48.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.005
+    03-severe: 0.995
+test_images/49.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.019
+    02-moderate: 0.127
+    03-severe: 0.854
+test_images/4.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.925
+    01-minor: 0.001
+    02-moderate: 0.061
+    03-severe: 0.013
+test_images/50.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.003
+    03-severe: 0.997
+test_images/51.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.008
+    03-severe: 0.992
+test_images/52.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.002
+    01-minor: 0.012
+    02-moderate: 0.120
+    03-severe: 0.867
+test_images/53.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.002
+    01-minor: 0.004
+    02-moderate: 0.044
+    03-severe: 0.950
+test_images/54.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.000
+    01-minor: 0.000
+    02-moderate: 0.006
+    03-severe: 0.994
+test_images/55.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.408
+    01-minor: 0.008
+    02-moderate: 0.385
+    03-severe: 0.199
+test_images/56.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.050
+    01-minor: 0.003
+    02-moderate: 0.119
+    03-severe: 0.828
+test_images/57.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.375
+    01-minor: 0.019
+    02-moderate: 0.442
+    03-severe: 0.164
+test_images/58.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.980
+    01-minor: 0.000
+    02-moderate: 0.019
+    03-severe: 0.001
+test_images/59.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.996
+    01-minor: 0.000
+    02-moderate: 0.004
+    03-severe: 0.000
+test_images/5.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.985
+    01-minor: 0.000
+    02-moderate: 0.013
+    03-severe: 0.002
+test_images/60.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.067
+    01-minor: 0.059
+    02-moderate: 0.556
+    03-severe: 0.319
+test_images/61.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.021
+    01-minor: 0.042
+    02-moderate: 0.532
+    03-severe: 0.405
+test_images/62.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.126
+    01-minor: 0.168
+    02-moderate: 0.468
+    03-severe: 0.238
+test_images/63.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.994
+    01-minor: 0.000
+    02-moderate: 0.006
+    03-severe: 0.000
+test_images/64.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.999
+    01-minor: 0.000
+    02-moderate: 0.001
+    03-severe: 0.000
+test_images/65.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.619
+    01-minor: 0.020
+    02-moderate: 0.305
+    03-severe: 0.057
+test_images/66.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.991
+    01-minor: 0.000
+    02-moderate: 0.009
+    03-severe: 0.000
+test_images/67.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.010
+    01-minor: 0.104
+    02-moderate: 0.547
+    03-severe: 0.339
+test_images/68.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.001
+    01-minor: 0.032
+    02-moderate: 0.769
+    03-severe: 0.198
+test_images/6.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.356
+    01-minor: 0.108
+    02-moderate: 0.494
+    03-severe: 0.043
+test_images/7.jpg: class=00-none (multiplier=1.0)
+  probabilities:
+    00-none: 0.465
+    01-minor: 0.031
+    02-moderate: 0.309
+    03-severe: 0.195
+test_images/8.jpg: class=02-moderate (multiplier=1.6)
+  probabilities:
+    00-none: 0.046
+    01-minor: 0.274
+    02-moderate: 0.626
+    03-severe: 0.054
+test_images/9.jpg: class=03-severe (multiplier=3.0)
+  probabilities:
+    00-none: 0.002
+    01-minor: 0.003
+    02-moderate: 0.058
+    03-severe: 0.937

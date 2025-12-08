@@ -42,7 +42,7 @@ We leveraged Transfer Learning to fine-tune state-of-the-art architectures for o
 
 #### Inference Service (`IncidentPredictor`)
 -   **Real-time Prediction**: The `IncidentPredictor` class loads trained `.pth` models and performs inference in milliseconds.
--   **Dynamic Penalties**: Predictions (Minor, Moderate, Severe) are immediately translated into edge weight penalties on the graph, dynamically altering the "cost" of traversing affected roads.
+-   **Dynamic Penalties**: Predictions (None, Minor, Moderate, Severe) are immediately translated into edge weight penalties on the graph. "None" results in no penalty (multiplier 1.0), while others increase the "cost" of traversing affected roads.
 
 ---
 

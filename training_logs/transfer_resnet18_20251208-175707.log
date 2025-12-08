@@ -1,0 +1,32 @@
+Epoch 01/50 - train_loss: 1.1540 - val_loss: 0.6869 - val_acc: 71.02%
+[INFO] Saved new best model to models/new_models/transfer_resnet18.pth (acc=71.02%)
+Epoch 02/50 - train_loss: 0.9158 - val_loss: 1.0444 - val_acc: 57.18%
+Epoch 03/50 - train_loss: 0.8442 - val_loss: 2.2653 - val_acc: 55.35%
+Epoch 04/50 - train_loss: 0.7924 - val_loss: 0.6626 - val_acc: 74.15%
+[INFO] Saved new best model to models/new_models/transfer_resnet18.pth (acc=74.15%)
+Epoch 05/50 - train_loss: 0.7715 - val_loss: 0.6760 - val_acc: 69.97%
+Epoch 06/50 - train_loss: 0.6969 - val_loss: 0.7870 - val_acc: 72.06%
+Epoch 07/50 - train_loss: 0.7030 - val_loss: 0.7364 - val_acc: 68.15%
+Epoch 08/50 - train_loss: 0.5830 - val_loss: 0.7582 - val_acc: 71.80%
+Epoch 09/50 - train_loss: 0.6453 - val_loss: 0.7201 - val_acc: 73.89%
+Epoch 10/50 - train_loss: 0.6173 - val_loss: 1.5592 - val_acc: 56.40%
+Epoch 11/50 - train_loss: 0.5728 - val_loss: 0.7872 - val_acc: 72.06%
+[INFO] Early stopping triggered at epoch 11
+[FINAL] Best checkpoint - val_loss: 0.6626, val_acc: 74.15%
+Confusion matrix:
+[[113   0  15   7]
+ [  0  43  35   4]
+ [  0   5  48  22]
+ [  0   1  10  80]]
+Classification report:
+              precision    recall  f1-score   support
+
+     00-none       1.00      0.84      0.91       135
+    01-minor       0.88      0.52      0.66        82
+ 02-moderate       0.44      0.64      0.52        75
+   03-severe       0.71      0.88      0.78        91
+
+    accuracy                           0.74       383
+   macro avg       0.76      0.72      0.72       383
+weighted avg       0.80      0.74      0.75       383
+

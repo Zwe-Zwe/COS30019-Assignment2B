@@ -1,0 +1,4 @@
+Model,Type,Total_Tests,Successful,Failed,Success_Rate,Avg_Confidence
+EfficientNet-B0,final,68,68,0,100.00%,74.70%
+MobileNetV3,final,68,68,0,100.00%,77.95%
+ResNet18,final,68,68,0,100.00%,76.71%

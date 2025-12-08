@@ -9,9 +9,9 @@ We trained three models on the provided dataset. The results provided interestin
 
 | Model | Best Validation Accuracy | Best Epoch | Total Epochs |
 | :--- | :--- | :--- | :--- |
-| EfficientNet-B0 | 73.79% | 1 | 8 |
-| MobileNet-V3 | 71.77% | 1 | 7 |
-| ResNet18 | 68.15% | 1 | 8 |
+| EfficientNet-B0 | 80.16% | 10 | 50 |
+| MobileNet-V3 | 77.81% | 8 | 50 |
+| ResNet18 | 74.15% | 11 | 50 |
 
 As shown in the table above:
 1.  Transfer_EfficientNet_B0 was the top performer, achieving a validation accuracy of ~73.8%. Its compound scaling method allows it to capture features (like shattered glass or subtle frame damage) better than the older architectures.

@@ -1,0 +1,13 @@
+Model: ResNet18
+Accuracy: 74.15%
+
+              precision    recall  f1-score   support
+
+     00-none       1.00      0.84      0.91       135
+    01-minor       0.88      0.52      0.66        82
+ 02-moderate       0.44      0.64      0.52        75
+   03-severe       0.71      0.88      0.78        91
+
+    accuracy                           0.74       383
+   macro avg       0.76      0.72      0.72       383
+weighted avg       0.80      0.74      0.75       383
