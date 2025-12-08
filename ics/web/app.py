@@ -14,7 +14,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
 from ics.predict.predictor import IncidentPredictor, PredictionResult, DEFAULT_MULTIPLIERS
-from ics.routing.search import dfs, bfs, gbfs, astar, cus1
+from ics.routing.search import dfs, bfs, gbfs, astar, cus1, cus2
 from ics.routing.k_shortest import k_shortest_paths
 from ics.parser import parse_assignment_file, Problem
 
@@ -46,6 +46,7 @@ ALGORITHMS = {
     "bfs": ("Breadth-First Search", bfs),
     "dfs": ("Depth-First Search", dfs),
     "cus1": ("Iterative Deepening DFS", cus1),
+    "cus2": ("Bidirectional A*", cus2),
 }
 
 def load_config() -> Dict:

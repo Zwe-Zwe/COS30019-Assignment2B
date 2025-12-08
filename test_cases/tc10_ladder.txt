@@ -1,0 +1,94 @@
+# PURPOSE: DNA Helix Ladder (TC10)
+# Structure: Two parallel vertical rails connected by frequent rungs.
+# This mimics a DNA helix or a ladder structure.
+# Algorithms must decide whether to stay on one rail or switch to the other
+# depending on edge weights.
+#
+# Nodes:
+# Left Rail: 10001 - 10007
+# Right Rail: 10008 - 10014
+# Goal: 10014
+
+[NODES]
+# Left Rail
+10001,0.0,0.0,L1
+10002,0.0,0.1,L2
+10003,0.0,0.2,L3
+10004,0.0,0.3,L4
+10005,0.0,0.4,L5
+10006,0.0,0.5,L6
+10007,0.0,0.6,L7 (Left End)
+
+# Right Rail
+10008,0.1,0.0,R1
+10009,0.1,0.1,R2
+10010,0.1,0.2,R3
+10011,0.1,0.3,R4
+10012,0.1,0.4,R5
+10013,0.1,0.5,R6
+10014,0.1,0.6,R7 (Goal)
+
+[WAYS]
+# Left Rail (Vertical)
+9801,10001,10002,Left Rail,primary,2
+9802,10002,10003,Left Rail,primary,2
+9803,10003,10004,Left Rail,primary,2
+9804,10004,10005,Left Rail,primary,2
+9805,10005,10006,Left Rail,primary,2
+9806,10006,10007,Left Rail,primary,2
+
+# Right Rail (Vertical)
+9810,10008,10009,Right Rail,primary,2
+9811,10009,10010,Right Rail,primary,2
+9812,10010,10011,Right Rail,primary,2
+9813,10011,10012,Right Rail,primary,2
+9814,10012,10013,Right Rail,primary,2
+9815,10013,10014,Right Rail,primary,2
+
+# Rungs (Horizontal Cross-over)
+# Connecting Ln to Rn
+9820,10001,10008,Rung 1,secondary,1
+9821,10008,10001,Rung 1,secondary,1
+
+9822,10002,10009,Rung 2,secondary,1
+9823,10009,10002,Rung 2,secondary,1
+
+9824,10003,10010,Rung 3,secondary,1
+9825,10010,10003,Rung 3,secondary,1
+
+9826,10004,10011,Rung 4,secondary,1
+9827,10011,10004,Rung 4,secondary,1
+
+9828,10005,10012,Rung 5,secondary,1
+9829,10012,10005,Rung 5,secondary,1
+
+9830,10006,10013,Rung 6,secondary,1
+9831,10013,10006,Rung 6,secondary,1
+
+9832,10007,10014,Rung 7,secondary,1
+9833,10014,10007,Rung 7,secondary,1
+
+# Diagonal Twists (Helix Effect)
+# Connecting Ln to R(n+1)
+9840,10001,10009,Twist 1-2,tertiary,3
+9841,10009,10001,Twist 1-2,tertiary,3
+
+9842,10002,10010,Twist 2-3,tertiary,3
+9843,10010,10002,Twist 2-3,tertiary,3
+
+9844,10003,10011,Twist 3-4,tertiary,3
+9845,10011,10003,Twist 3-4,tertiary,3
+
+9846,10004,10012,Twist 4-5,tertiary,3
+9847,10012,10004,Twist 4-5,tertiary,3
+
+9848,10005,10013,Twist 5-6,tertiary,3
+9849,10013,10005,Twist 5-6,tertiary,3
+
+9850,10006,10014,Twist 6-7,tertiary,3
+9851,10014,10006,Twist 6-7,tertiary,3
+
+[META]
+START,10001
+GOAL,10014
+ACCIDENT_MULTIPLIER,3

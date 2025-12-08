@@ -1,0 +1,97 @@
+# PURPOSE: City Blockade Obstacle Test (TC02)
+# A dense inner city grid (high risk of accidents) surrounded by an outer ring road.
+# Tests if the algorithm intelligently switches to the Ring Road when the
+# inner city becomes congested (accident cost multiplier).
+#
+# Nodes:
+# Inner Grid: 2001-2009 (3x3)
+# Outer Ring: 2010-2017 (Surrounding)
+# Start: 2010 (West Ring)
+# Goal: 2014 (East Ring)
+
+[NODES]
+# Inner Grid (Congestion Zone)
+2001,1.001,110.001,City Center NW
+2002,1.001,110.002,City Center N
+2003,1.001,110.003,City Center NE
+2004,1.002,110.001,City Center W
+2005,1.002,110.002,City Plaza (Hub)
+2006,1.002,110.003,City Center E
+2007,1.003,110.001,City Center SW
+2008,1.003,110.002,City Center S
+2009,1.003,110.003,City Center SE
+
+# Outer Ring (Highway Bypass)
+2010,1.002,110.000,Ring West (Start)
+2011,1.000,110.000,Ring NW Corner
+2012,1.000,110.002,Ring North
+2013,1.000,110.004,Ring NE Corner
+2014,1.002,110.004,Ring East (Goal)
+2015,1.004,110.004,Ring SE Corner
+2016,1.004,110.002,Ring South
+2017,1.004,110.000,Ring SW Corner
+
+[WAYS]
+# way_id,from_node,to_node,road_name,highway_type,travel_time_min
+
+# Inner City Grid (Tight, slow, potential accidents)
+# Horizontal
+9101,2001,2002,City St,residential,2
+9102,2002,2003,City St,residential,2
+9103,2004,2005,City St,residential,2
+9104,2005,2006,City St,residential,2
+9105,2007,2008,City St,residential,2
+9106,2008,2009,City St,residential,2
+# Reverse H
+9107,2003,2002,City St,residential,2
+9108,2002,2001,City St,residential,2
+9109,2006,2005,City St,residential,2
+9110,2005,2004,City St,residential,2
+9111,2009,2008,City St,residential,2
+9112,2008,2007,City St,residential,2
+
+# Vertical
+9113,2001,2004,Ave 1,residential,2
+9114,2004,2007,Ave 1,residential,2
+9115,2002,2005,Ave 2,residential,2
+9116,2005,2008,Ave 2,residential,2
+9117,2003,2006,Ave 3,residential,2
+9118,2006,2009,Ave 3,residential,2
+# Reverse V
+9119,2007,2004,Ave 1,residential,2
+9120,2004,2001,Ave 1,residential,2
+9121,2008,2005,Ave 2,residential,2
+9122,2005,2002,Ave 2,residential,2
+9123,2009,2006,Ave 3,residential,2
+9124,2006,2003,Ave 3,residential,2
+
+# Connecting Ring to Grid (Entry/Exits)
+9125,2010,2004,West Gate,primary,3
+9126,2004,2010,West Gate,primary,3
+9127,2014,2006,East Gate,primary,3
+9128,2006,2014,East Gate,primary,3
+
+# The Outer Ring (Fast but longer path around)
+9130,2010,2011,Ring Loop,highway,5
+9131,2011,2012,Ring Loop,highway,5
+9132,2012,2013,Ring Loop,highway,5
+9133,2013,2014,Ring Loop,highway,5
+9134,2014,2015,Ring Loop,highway,5
+9135,2015,2016,Ring Loop,highway,5
+9136,2016,2017,Ring Loop,highway,5
+9137,2017,2010,Ring Loop,highway,5
+
+# Ring Reverse
+9140,2011,2010,Ring Loop,highway,5
+9141,2012,2011,Ring Loop,highway,5
+9142,2013,2012,Ring Loop,highway,5
+9143,2014,2013,Ring Loop,highway,5
+9144,2015,2014,Ring Loop,highway,5
+9145,2016,2015,Ring Loop,highway,5
+9146,2017,2016,Ring Loop,highway,5
+9147,2010,2017,Ring Loop,highway,5
+
+[META]
+START,2010
+GOAL,2014
+ACCIDENT_MULTIPLIER,3

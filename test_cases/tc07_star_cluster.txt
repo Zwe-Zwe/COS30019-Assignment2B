@@ -1,0 +1,92 @@
+# PURPOSE: Mega Hub (Star Cluster) (TC07)
+# A topology where all major traffic must flow through a single Central Hub.
+# The graph has 4 distinct "Arms" (North, East, South, West).
+# To go from any Arm to another, you MUST pass through the Center.
+#
+# Nodes:
+# Center: 7000
+# North Arm: 7010-7014
+# East Arm: 7020-7024
+# South Arm: 7030-7034
+# West Arm: 7040-7044
+
+[NODES]
+7000,0.0,0.0,Central Hub (The Core)
+
+# North Arm
+7010,0.0,0.1,N1 (Gate)
+7011,0.0,0.2,N2
+7012,-0.1,0.3,N3 Left (Dead End)
+7013,0.1,0.3,N3 Right (Start)
+7014,0.0,0.4,N4 Extreme
+
+# East Arm
+7020,0.1,0.0,E1 (Gate)
+7021,0.2,0.0,E2
+7022,0.3,-0.1,E3 Low
+7023,0.3,0.1,E3 High
+7024,0.4,0.0,E4 Extreme
+
+# South Arm
+7030,0.0,-0.1,S1 (Gate)
+7031,0.0,-0.2,S2
+7032,-0.1,-0.3,S3 Left [Goal]
+7033,0.1,-0.3,S3 Right
+7034,0.0,-0.4,S4 Extreme
+
+# West Arm
+7040,-0.1,0.0,W1 (Gate)
+7041,-0.2,0.0,W2
+7042,-0.3,-0.1,W3 Low
+7043,-0.3,0.1,W3 High
+7044,-0.4,0.0,W4 Extreme
+
+[WAYS]
+# Hub Connections (Bottlenecks)
+9501,7000,7010,N Gate,primary,5
+9502,7010,7000,N Gate,primary,5
+9503,7000,7020,E Gate,primary,5
+9504,7020,7000,E Gate,primary,5
+9505,7000,7030,S Gate,primary,5
+9506,7030,7000,S Gate,primary,5
+9507,7000,7040,W Gate,primary,5
+9508,7040,7000,W Gate,primary,5
+
+# North Internal
+9510,7010,7011,N Road,secondary,2
+9511,7011,7010,N Road,secondary,2
+9512,7011,7012,N Branch L,tertiary,2
+9513,7012,7011,N Branch L,tertiary,2
+9514,7011,7013,N Branch R,tertiary,2
+9515,7013,7011,N Branch R,tertiary,2
+9516,7013,7014,N Ext,tertiary,2
+9517,7014,7013,N Ext,tertiary,2
+
+# East Internal
+9520,7020,7021,E Road,secondary,2
+9521,7021,7020,E Road,secondary,2
+9522,7021,7022,E Branch L,tertiary,2
+9523,7022,7021,E Branch L,tertiary,2
+9524,7021,7023,E Branch R,tertiary,2
+9525,7023,7021,E Branch R,tertiary,2
+
+# South Internal
+9530,7030,7031,S Road,secondary,2
+9531,7031,7030,S Road,secondary,2
+9532,7031,7032,S Goals Rd,tertiary,2
+9533,7032,7031,S Goals Rd,tertiary,2
+9534,7031,7033,S Branch R,tertiary,2
+9535,7033,7031,S Branch R,tertiary,2
+
+# West Internal
+9540,7040,7041,W Road,secondary,2
+9541,7041,7040,W Road,secondary,2
+9542,7041,7042,W Branch L,tertiary,2
+9543,7042,7041,W Branch L,tertiary,2
+9544,7041,7043,W Branch H,tertiary,2
+9545,7043,7041,W Branch H,tertiary,2
+
+[META]
+START,7013
+GOAL,7032
+ACCIDENT_MULTIPLIER,3

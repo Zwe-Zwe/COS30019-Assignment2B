@@ -1,0 +1,96 @@
+# PURPOSE: Long Distance Highway Test (TC01)
+# A simple linear path but scaled up to 20 nodes to test signal propagation
+# and cost accumulation over distance.
+#
+# Topology:
+# START -> N02 -> N03 ... -> N20 -> GOAL
+# Total Nodes: 20
+# Total Ways: 38 (Bidirectional)
+
+[NODES]
+1001,1.5501,110.3301,Mile Marker 1 (Start)
+1002,1.5502,110.3302,Mile Marker 2
+1003,1.5503,110.3303,Mile Marker 3
+1004,1.5504,110.3304,Mile Marker 4
+1005,1.5505,110.3305,Mile Marker 5
+1006,1.5506,110.3306,Rest Stop A
+1007,1.5507,110.3307,Mile Marker 7
+1008,1.5508,110.3308,Mile Marker 8
+1009,1.5509,110.3309,Mile Marker 9
+1010,1.5510,110.3310,Midway Point
+1011,1.5511,110.3311,Mile Marker 11
+1012,1.5512,110.3312,Mile Marker 12
+1013,1.5513,110.3313,Mile Marker 13
+1014,1.5514,110.3314,Mile Marker 14
+1015,1.5515,110.3315,Rest Stop B
+1016,1.5516,110.3316,Mile Marker 16
+1017,1.5517,110.3317,Mile Marker 17
+1018,1.5518,110.3318,Mile Marker 18
+1019,1.5519,110.3319,Mile Marker 19
+1020,1.5520,110.3320,City Gates (Goal)
+
+[WAYS]
+# way_id,from_node,to_node,road_name,highway_type,travel_time_min
+
+# The Long Highway (Bidirectional)
+9001,1001,1002,Highway 1,primary,2
+9002,1002,1001,Highway 1,primary,2
+
+9003,1002,1003,Highway 1,primary,2
+9004,1003,1002,Highway 1,primary,2
+
+9005,1003,1004,Highway 1,primary,2
+9006,1004,1003,Highway 1,primary,2
+
+9007,1004,1005,Highway 1,primary,2
+9008,1005,1004,Highway 1,primary,2
+
+9009,1005,1006,Highway 1,primary,2
+9010,1006,1005,Highway 1,primary,2
+
+9011,1006,1007,Highway 1,primary,2
+9012,1007,1006,Highway 1,primary,2
+
+9013,1007,1008,Highway 1,primary,2
+9014,1008,1007,Highway 1,primary,2
+
+9015,1008,1009,Highway 1,primary,2
+9016,1009,1008,Highway 1,primary,2
+
+9017,1009,1010,Highway 1,primary,2
+9018,1010,1009,Highway 1,primary,2
+
+9019,1010,1011,Highway 1,primary,2
+9020,1011,1010,Highway 1,primary,2
+
+9021,1011,1012,Highway 1,primary,2
+9022,1012,1011,Highway 1,primary,2
+
+9023,1012,1013,Highway 1,primary,2
+9024,1013,1012,Highway 1,primary,2
+
+9025,1013,1014,Highway 1,primary,2
+9026,1014,1013,Highway 1,primary,2
+
+9027,1014,1015,Highway 1,primary,2
+9028,1015,1014,Highway 1,primary,2
+
+9029,1015,1016,Highway 1,primary,2
+9030,1016,1015,Highway 1,primary,2
+
+9031,1016,1017,Highway 1,primary,2
+9032,1017,1016,Highway 1,primary,2
+
+9033,1017,1018,Highway 1,primary,2
+9034,1018,1017,Highway 1,primary,2
+
+9035,1018,1019,Highway 1,primary,2
+9036,1019,1018,Highway 1,primary,2
+
+9037,1019,1020,Highway 1,primary,2
+9038,1020,1019,Highway 1,primary,2
+
+[META]
+START,1001
+GOAL,1020
+ACCIDENT_MULTIPLIER,3

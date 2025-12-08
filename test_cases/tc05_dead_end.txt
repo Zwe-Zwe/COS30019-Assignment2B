@@ -1,0 +1,98 @@
+# PURPOSE: The Maze (Dead End Traps) (TC05)
+# A Start Node spawns into four distinct "Corridors" (North, South, East, West).
+# Only the WEST corridor leads to the Goal.
+# The Top, East, and South corridors are deep, elaborate traps with multiple sub-branches
+# that all end in dead ends. This tests DFS/BFS exploration efficiency.
+#
+# Nodes:
+# Start: 5001
+# Goal: 5020 (End of West Corridor)
+# Traps: North Branch (5002-5006), East Branch (5007-5012), South Branch (5013-5016)
+
+[NODES]
+5001,0.0,0.0,Start (Center)
+
+# North Branch (The "Long" Trap)
+5002,0.1,0.0,N1
+5003,0.2,0.0,N2
+5004,0.3,0.0,N3 (Dead End)
+5005,0.2,0.1,N2-Right
+5006,0.2,-0.1,N2-Left (Dead End)
+
+# East Branch (The "Wide" Trap)
+5007,0.0,0.1,E1
+5008,0.0,0.2,E2
+5009,0.1,0.2,E2-Top (Dead End)
+5010,-0.1,0.2,E2-Bot (Dead End)
+5011,0.0,0.3,E3
+5012,0.0,0.4,E4 (Dead End)
+
+# South Branch (The "Short" Trap)
+5013,0.0,-0.1,S1
+5014,0.0,-0.2,S2
+5015,0.1,-0.2,S2-Right (Dead End)
+5016,-0.1,-0.2,S2-Left (Dead End)
+
+# West Branch (The True Path)
+5017,-0.1,0.0,W1
+5018,-0.2,0.0,W2
+5019,-0.3,0.0,W3
+5020,-1.0,0.0,Goal (Way out west)
+5021,-0.4,0.0,W4
+5022,-0.5,0.0,W5
+
+[WAYS]
+# North Trap
+9301,5001,5002,N Path,secondary,2
+9302,5002,5001,N Path,secondary,2
+9303,5002,5003,N Path,secondary,2
+9304,5003,5002,N Path,secondary,2
+9305,5003,5004,N Path,secondary,2
+9306,5004,5003,N Path,secondary,2
+9307,5003,5005,N Side Path,tertiary,2
+9308,5005,5003,N Side Path,tertiary,2
+9309,5003,5006,N Side Path,tertiary,2
+9310,5006,5003,N Side Path,tertiary,2
+
+# East Trap
+9311,5001,5007,E Path,secondary,2
+9312,5007,5001,E Path,secondary,2
+9313,5007,5008,E Path,secondary,2
+9314,5008,5007,E Path,secondary,2
+9315,5008,5009,E Split Top,tertiary,2
+9316,5009,5008,E Split Top,tertiary,2
+9317,5008,5010,E Split Bot,tertiary,2
+9318,5010,5008,E Split Bot,tertiary,2
+9319,5008,5011,E Path,secondary,2
+9320,5011,5008,E Path,secondary,2
+9321,5011,5012,E Path,secondary,2
+9322,5012,5011,E Path,secondary,2
+
+# South Trap
+9323,5001,5013,S Path,secondary,2
+9324,5013,5001,S Path,secondary,2
+9325,5013,5014,S Path,secondary,2
+9326,5014,5013,S Path,secondary,2
+9327,5014,5015,S Split R,tertiary,2
+9328,5015,5014,S Split R,tertiary,2
+9329,5014,5016,S Split L,tertiary,2
+9330,5016,5014,S Split L,tertiary,2
+
+# West Path (True)
+9331,5001,5017,W Path,primary,2
+9332,5017,5001,W Path,primary,2
+9333,5017,5018,W Path,primary,2
+9334,5018,5017,W Path,primary,2
+9335,5018,5019,W Path,primary,2
+9336,5019,5018,W Path,primary,2
+9337,5019,5021,W Path,primary,2
+9338,5021,5019,W Path,primary,2
+9339,5021,5022,W Path,primary,2
+9340,5022,5021,W Path,primary,2
+9341,5022,5020,W Path,primary,2
+9342,5020,5022,W Path,primary,2
+
+[META]
+START,5001
+GOAL,5020
+ACCIDENT_MULTIPLIER,3

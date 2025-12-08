@@ -1,0 +1,63 @@
+# PURPOSE: Archipelago (Disconnected Graph) (TC06)
+# Map simulates three distinct islands with no bridges connecting them.
+# Island A: Start Node resides here.
+# Island B: Goal Node resides here.
+# Island C: Just another isolated cluster.
+#
+# Expected Behavior:
+# A*, Dijkstra, BFS should exhaust all nodes in Island A and return "No Route Found".
+# This verifies the software does not hang or crash when path is impossible.
+
+[NODES]
+# Island A (The Start)
+6001,0.0,0.0,Island A Port (Start)
+6002,0.1,0.0,Island A Town
+6003,0.0,0.1,Island A Beach
+6004,0.1,0.1,Island A Resort
+
+# Island B (The Goal - Inaccessible)
+6010,1.0,1.0,Island B Port (Goal)
+6011,1.1,1.0,Island B City
+6012,1.0,1.1,Island B Mines
+6013,1.1,1.1,Island B Airfield
+
+# Island C (Distraction)
+6020,0.5,0.5,Island C Outpost
+6021,0.6,0.5,Island C Jungle
+6022,0.5,0.6,Island C Ruins
+
+[WAYS]
+# Island A Internal Roads
+9401,6001,6002,Road A1,secondary,5
+9402,6002,6001,Road A1,secondary,5
+9403,6002,6003,Road A2,secondary,5
+9404,6003,6002,Road A2,secondary,5
+9405,6003,6004,Road A3,secondary,5
+9406,6004,6003,Road A3,secondary,5
+9407,6004,6001,Road A4,secondary,5
+9408,6001,6004,Road A4,secondary,5
+
+# Island B Internal Roads
+9409,6010,6011,Road B1,secondary,5
+9410,6011,6010,Road B1,secondary,5
+9411,6011,6012,Road B2,secondary,5
+9412,6012,6011,Road B2,secondary,5
+9413,6012,6013,Road B3,secondary,5
+9414,6013,6012,Road B3,secondary,5
+9415,6013,6010,Road B4,secondary,5
+9416,6010,6013,Road B4,secondary,5
+
+# Island C Internal Roads
+9417,6020,6021,Road C1,tertiary,10
+9418,6021,6020,Road C1,tertiary,10
+9419,6021,6022,Road C2,tertiary,10
+9420,6022,6021,Road C2,tertiary,10
+9421,6022,6020,Road C3,tertiary,10
+9422,6020,6022,Road C3,tertiary,10
+
+# NO WAYS CONNECTING 6000s, 6010s, or 6020s.
+
+[META]
+START,6001
+GOAL,6010
+ACCIDENT_MULTIPLIER,3
