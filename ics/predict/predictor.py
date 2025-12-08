@@ -34,6 +34,7 @@ class PredictionResult:
 
 
 DEFAULT_MULTIPLIERS = {
+    "00-none": 1.0,
     "01-minor": 1.2,
     "02-moderate": 1.6,
     "03-severe": 3.0,

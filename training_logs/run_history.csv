@@ -4,3 +4,5 @@ timestamp,model,best_epoch,best_acc,best_loss,epochs,batch_size,lr,weight_decay,
 20251207-220615,transfer_resnet18,1,68.15,0.7713,40,32,0.0005,0.0005,cosine,model=resnet18; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7; amp=True; workers=8; prefetch=2
 20251207-220653,transfer_mobilenet_v3_small,1,71.77,0.6631,35,40,0.0007,0.0005,cosine,model=mobilenet_v3_small; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=6; amp=True; workers=8; prefetch=2
 20251207-220824,transfer_efficientnet_b0,1,73.79,0.5925,45,32,0.0003,0.0005,cosine,unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7
+20251208-155404,transfer_resnet18,5,76.76,0.5666,5,32,0.0005,0.0005,cosine,model=resnet18; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=7; amp=False; workers=8; prefetch=2
+20251208-155739,transfer_mobilenet_v3_small,5,75.72,0.5893,5,40,0.0007,0.0005,cosine,model=mobilenet_v3_small; unfreeze=True; scheduler=cosine; strong_aug=True; wd=0.0005; early_stop=6; amp=False; workers=8; prefetch=2
